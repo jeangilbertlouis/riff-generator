@@ -27,7 +27,10 @@ export type Schedule = {
   guitar1: ScheduledNote[];
   guitar2: ScheduledNote[];
   drums: ScheduledDrum[];
+  pad: ScheduledChord[];
 };
+
+export type ScheduledChord = { ticks: number; durationTicks: number; midis: number[]; step: number };
 
 export type ScheduledDrum = { ticks: number; piece: Riff['drums'][number]['piece']; accent: boolean; step: number };
 
@@ -58,6 +61,7 @@ export function buildSchedule(riff: Riff, { countIn, ppq = DEFAULT_PPQ }: Schedu
     totalSteps: riff.totalSteps,
     guitar1: riff.guitar1.map(toScheduled),
     guitar2: riff.guitar2.map(toScheduled),
+    pad: riff.pad.map((p) => ({ ticks: riffStart + p.step * ticksPerStep, durationTicks: p.length * ticksPerStep, midis: p.midis, step: p.step })),
     drums: riff.drums.map((d) => ({ ticks: riffStart + d.step * ticksPerStep, piece: d.piece, accent: d.accent, step: d.step })),
   };
 }

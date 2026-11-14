@@ -70,6 +70,7 @@ src/
     complexity.ts    # complexity levels: profiles (range, leaps, cells, groupings, variation) and odd groupings
     harmony.ts       # chords on scale degrees, names, progression templates, chord timeline
     drums.ts         # simple drum beat derived from the style and Guitar 1 (pure, no randomness)
+    pad.ts           # synth pad voicings for the backing chords, with smooth voice leading (pure)
     second.ts        # derives Guitar 2's part from Guitar 1 (see §4.6)
     generate.ts      # generateRiff(options): validation + wiring, the engine's entry point
     asciiTab.ts      # text tab for debugging and the CLI preview
@@ -82,6 +83,7 @@ src/
     guitar.ts        # Tone.js guitar voice (synth + distortion + cab filter), one instance per guitar
     countIn.ts       # Tone.js muted-string scratch for the count-in
     drums.ts         # Tone.js synthesized kit: kick, snare, hi-hat, crash
+    pad.ts           # Tone.js polyphonic synth pad playing the backing chords
     player.ts        # transport: play/stop/loop, BPM, pan, solo/mute, cursor callbacks
   tab/
     layout.ts        # pure: Riff + width → systems, staves, note positions, palm-mute groups
@@ -1666,6 +1668,91 @@ tuning followed the key (§4.3).
   - the link carries `chg`;
   - playback, including switching option mid-play, raised no errors;
   - the settings sit in two rows of four.
+
+### 6.16 Synth track: the backing chords
+
+**Request:** a synth track that just plays the backing chord.
+
+**Choices I made** (easy to change):
+
+- **A sustained pad,** one chord per chord slot, held for the slot's full
+  length, so it follows Steady, Longer and Repeat changes.
+- **On by default,** with a **Synth** channel in the mixer (Mute, Solo,
+  volume), like the other instruments.
+- **Included in the MIDI export** as a fifth track (channel 3, GM program
+  90 "Pad 2 (warm)").
+- **Not in the tab;** the chord names above the tab already show what it
+  plays.
+
+**Voicing** (`engine/pad.ts`, pure, derived from the progression, no
+randomness, so riffs don't change):
+
+- **Close-position triads** (root, third and fifth within an octave) in the
+  middle register: between an octave and about two octaves above the riff's
+  root. That sits above the guitars' low pedal and under their leads.
+- **Smooth voice leading:** each chord uses the inversion closest to the
+  previous chord (the smallest total movement), the way a keyboard player
+  would, rather than jumping the whole chord around.
+
+**Sound** (`audio/pad.ts`):
+
+- A soft polyphonic pad: detuned saw voices, a slow attack (80 ms) and a long
+  release, then a low-pass filter around 2 kHz, so it fills the space
+  without fighting the distorted guitars.
+- Centered, and **quieter than the guitars**; levels are measured, as for
+  the drums.
+- The same late/duplicate-event guard as every other voice.
+
+**Code:**
+
+- The mixer becomes four channels.
+- `buildSchedule` adds a pad lane.
+- The MIDI writer adds the pad track.
+
+**Tests:**
+
+- The pad covers the progression exactly.
+- Every pad note is a tone of its chord: three distinct pitch classes.
+- Pad notes stay in range.
+- The voice leading moves less than root-position voicings would.
+- Scheduling, the 4-channel mixer and the MIDI pad track.
+- In the browser: the synth is audible and centered; muting it is silent;
+  the peaks are safe.
+
+**Findings while building it:**
+
+- **A root-position chord doesn't always fit the pad's range.** The range is
+  16 semitones, and a root-position triad needs 7 semitones above its bass,
+  which leaves a 9-semitone window for the bass. Some chord roots fall
+  outside it. The pad is fine (it can always use an inversion), but the
+  test's root-position comparison needed an octave of headroom.
+- **First level, measured** (three riffs: chug/Repeat, tremolo/Longer,
+  breakdown/Steady):
+  - the synth sits **4–7 dB under the guitars**, perfectly centered
+    (left = right);
+  - the synth alone peaks at about 0.30;
+  - full-mix peaks are 0.78–0.81;
+  - muting everything is exactly silent.
+
+**Verified:**
+
+- **231 tests pass. New ones cover:**
+  - voicings and voice leading: Em → F moves at most 4 semitones in total,
+    and across 144 riffs the pad moves less than 75 % of what root-position
+    chords would;
+  - one pad chord per chord slot, in all three chord-changes options;
+  - three distinct chord tones in close position, in the pad register;
+  - the riff being unaffected;
+  - pad scheduling with the count-in;
+  - the 4-channel mixer;
+  - the MIDI pad track (channel 3, program 90, every chord held for exactly
+    its slot).
+  - The golden test is unchanged.
+- **Live in the browser:** the Synth row is in the mixer; Solo on the synth
+  silences the guitars and drums; play, regenerating during playback and
+  stop raised no errors.
+- **Not verified:** how the pad sounds. The values are in `PAD`
+  (`audio/pad.ts`).
 
 ---
 

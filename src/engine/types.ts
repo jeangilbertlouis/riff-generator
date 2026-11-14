@@ -103,6 +103,8 @@ export type Riff = {
   /** The chord progression under the whole riff (see chordChanges). */
   progression: ChordSlot[];
   chordChanges: ChordChanges;
+  /** The backing chords for the synth pad, voiced with smooth voice leading (see pad.ts). */
+  pad: { step: number; length: number; midis: number[] }[];
   /** A simple drum beat for playback, derived from the style and Guitar 1 (see drums.ts). */
   drums: { step: number; piece: 'kick' | 'snare' | 'hat' | 'crash'; accent: boolean }[];
   tuning: Tuning;

@@ -1,6 +1,7 @@
 import { PROFILES } from './complexity.ts';
 import { generateDrums } from './drums.ts';
 import { autoChordChanges, chooseProgression } from './harmony.ts';
+import { voicePad } from './pad.ts';
 import { Rng, randomSeed } from './random.ts';
 import { chooseArchetype, generateGuitar1, makeMelodyContext } from './riff.ts';
 import { autoSecondGuitarMode, deriveGuitar2 } from './second.ts';
@@ -65,6 +66,8 @@ export function generateRiff(options: GenerateOptions): Riff {
     chromaticPassing,
     progression,
     chordChanges,
+    // Derived from the progression without randomness, so the riff itself is unchanged.
+    pad: voicePad(progression, root),
     // Derived after both guitars and without randomness, so the riff itself is unchanged.
     drums: generateDrums({ archetype, totalSteps: bars * 16, guitar1: g1 }),
     tuning,

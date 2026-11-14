@@ -1,9 +1,9 @@
 export type GuitarId = 'guitar1' | 'guitar2';
 export const GUITARS: GuitarId[] = ['guitar1', 'guitar2'];
 
-/** Mixer channels: the two guitars and the drums. */
-export type ChannelId = GuitarId | 'drums';
-export const CHANNELS: ChannelId[] = ['guitar1', 'guitar2', 'drums'];
+/** Mixer channels: the two guitars, the drums and the synth pad. */
+export type ChannelId = GuitarId | 'drums' | 'synth';
+export const CHANNELS: ChannelId[] = ['guitar1', 'guitar2', 'drums', 'synth'];
 
 export type ChannelState = { muted: boolean; solo: boolean; volumeDb: number };
 export type MixerState = Record<ChannelId, ChannelState>;
@@ -13,6 +13,7 @@ export function defaultMixer(): MixerState {
     guitar1: { muted: false, solo: false, volumeDb: 0 },
     guitar2: { muted: false, solo: false, volumeDb: 0 },
     drums: { muted: false, solo: false, volumeDb: 0 },
+    synth: { muted: false, solo: false, volumeDb: 0 },
   };
 }
 

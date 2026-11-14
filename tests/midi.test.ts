@@ -8,7 +8,9 @@ import {
   DRUM_CHANNEL,
   GM_DRUMS,
   MIDI_PPQ,
+  PAD_CHANNEL,
   TICKS_PER_STEP,
+  WARM_PAD,
   midiFileName,
   riffToMidi,
   vlq,
@@ -97,10 +99,21 @@ describe('riffToMidi', () => {
   const riff = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, bars: 2, seed: 7, guitar2Mode: 'harmony' });
   const parsed = readMidi(riffToMidi(riff));
 
-  it('writes a format-1 file with a tempo track, two guitar tracks and a drum track', () => {
+  it('writes a format-1 file with a tempo track, two guitar tracks, a drum track and a synth track', () => {
     expect(parsed.format).toBe(1);
-    expect(parsed.ntracks).toBe(4);
+    expect(parsed.ntracks).toBe(5);
     expect(parsed.division).toBe(MIDI_PPQ);
+  });
+
+  it('puts the synth chords on channel 3 with a warm pad, each chord held for its full length', () => {
+    const t = parsed.tracks[4]!;
+    expect(t.every((e) => e.status === 0xff || (e.status & 0x0f) === PAD_CHANNEL)).toBe(true);
+    expect(t.find((e) => e.status === (0xc0 | PAD_CHANNEL))!.data).toEqual([WARM_PAD]);
+    const notes = notesOf(t);
+    const expected = riff.pad
+      .flatMap((c) => c.midis.map((m) => ({ start: c.step * TICKS_PER_STEP, end: (c.step + c.length) * TICKS_PER_STEP, midi: m })))
+      .sort((a, b) => a.start - b.start || a.midi - b.midi);
+    expect(notes.map(({ start, end, midi }) => ({ start, end, midi })).sort((a, b) => a.start - b.start || a.midi - b.midi)).toEqual(expected);
   });
 
   it('puts the drums on General MIDI channel 10, one note per hit with the GM drum sounds', () => {

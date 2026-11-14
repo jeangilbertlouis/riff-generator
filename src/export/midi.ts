@@ -61,6 +61,27 @@ function guitarTrack(name: string, notes: NoteEvent[], channel: number, pan: num
   return track(events);
 }
 
+/** Synth pad: MIDI channel 3 (0-based 2), GM program 90 "Pad 2 (warm)" (0-based 89). */
+export const PAD_CHANNEL = 2;
+export const WARM_PAD = 89;
+
+function padTrack(chords: Riff['pad']): number[] {
+  const events: TrackEvent[] = [
+    { tick: 0, order: 0, bytes: meta(0x03, ascii('Synth (chords)')) },
+    { tick: 0, order: 0, bytes: [0xc0 | PAD_CHANNEL, WARM_PAD] },
+    { tick: 0, order: 0, bytes: [0xb0 | PAD_CHANNEL, 7, 80] },
+  ];
+  for (const c of chords) {
+    const start = c.step * TICKS_PER_STEP;
+    const end = start + c.length * TICKS_PER_STEP;
+    for (const m of c.midis) {
+      events.push({ tick: start, order: 2, bytes: [0x90 | PAD_CHANNEL, m, 80] });
+      events.push({ tick: end, order: 1, bytes: [0x80 | PAD_CHANNEL, m, 64] });
+    }
+  }
+  return track(events);
+}
+
 /** General MIDI drum channel (channel 10, 0-based 9) and percussion notes. */
 export const DRUM_CHANNEL = 9;
 export const GM_DRUMS: Record<Riff['drums'][number]['piece'], number> = { kick: 36, snare: 38, hat: 42, crash: 49 };
@@ -91,11 +112,12 @@ export function riffToMidi(riff: Riff, bpm = riff.bpm): Uint8Array<ArrayBuffer> 
     { tick: 0, order: 0, bytes: meta(0x51, [(microsPerQuarter >> 16) & 0xff, (microsPerQuarter >> 8) & 0xff, microsPerQuarter & 0xff]) },
   ]);
   const bytes = [
-    ...chunk('MThd', [...u16(1), ...u16(4), ...u16(MIDI_PPQ)]),
+    ...chunk('MThd', [...u16(1), ...u16(5), ...u16(MIDI_PPQ)]),
     ...tempoTrack,
     ...guitarTrack('Guitar 1', riff.guitar1, 0, PAN.guitar1),
     ...guitarTrack(`Guitar 2 (${riff.guitar2Mode})`, riff.guitar2, 1, PAN.guitar2),
     ...drumTrack(riff.drums),
+    ...padTrack(riff.pad),
   ];
   return new Uint8Array(bytes);
 }

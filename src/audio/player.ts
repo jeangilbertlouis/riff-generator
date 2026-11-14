@@ -4,6 +4,7 @@ import type { Riff } from '../engine/types.ts';
 import { CountInVoice } from './countIn.ts';
 import { GuitarVoice, TONE } from './guitar.ts';
 import { DrumKit, KIT } from './drums.ts';
+import { PAD, PadSynth } from './pad.ts';
 import { GUITARS, defaultMixer, isAudible, type ChannelId, type GuitarId, type MixerState } from './mixer.ts';
 import { buildSchedule, positionAtTicks, type CursorPosition, type Schedule } from './schedule.ts';
 
@@ -33,6 +34,7 @@ type AudioGraph = {
   voices: Record<GuitarId, GuitarVoice>;
   countIn: CountInVoice;
   drums: DrumKit;
+  pad: PadSynth;
   bus: Tone.ToneAudioNode[];
 };
 
@@ -124,6 +126,7 @@ export class Player {
     this.draw.cancel(0);
     this.stopEventId = null;
     if (this.audio) GUITARS.forEach((g) => this.audio?.voices[g].silence());
+    this.audio?.pad.silence();
     this.setPlaying(false);
     this.emitCursor(null);
   }
@@ -191,6 +194,7 @@ export class Player {
     GUITARS.forEach((g) => this.audio?.voices[g].dispose());
     this.audio.countIn.dispose();
     this.audio.drums.dispose();
+    this.audio.pad.dispose();
     this.audio.bus.forEach((n) => n.dispose());
     this.audio = null;
   }
@@ -207,6 +211,7 @@ export class Player {
       },
       countIn: new CountInVoice(compressor),
       drums: new DrumKit(compressor),
+      pad: new PadSynth(compressor),
       bus: [compressor, trim, limiter],
     };
     this.applyMixer();
@@ -223,6 +228,8 @@ export class Player {
     }
     this.audio.drums.setAudible(isAudible(this.mixer, 'drums'), immediate);
     this.audio.drums.setVolume(KIT.outputDb + this.mixer.drums.volumeDb, immediate);
+    this.audio.pad.setAudible(isAudible(this.mixer, 'synth'), immediate);
+    this.audio.pad.setVolume(PAD.outputDb + this.mixer.synth.volumeDb, immediate);
   }
 
   private scheduleRiff(riff: Riff, countIn: boolean): void {
@@ -242,6 +249,10 @@ export class Player {
         // Converted when the note plays, so a live tempo change also changes note lengths.
         tr.schedule((time) => voice.play(note, this.ticksToSeconds(note.durationTicks), time), `${note.ticks}i`);
       }
+    }
+    for (const chord of s.pad) {
+      // Held for the chord's length, converted when it plays so tempo changes apply.
+      tr.schedule((time) => audio.pad.play(chord.midis, this.ticksToSeconds(chord.durationTicks), time), `${chord.ticks}i`);
     }
     for (const hit of s.drums) {
       tr.schedule((time) => audio.drums.play(hit.piece, hit.accent, time), `${hit.ticks}i`);

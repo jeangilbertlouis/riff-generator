@@ -52,6 +52,20 @@ describe('buildSchedule', () => {
     }
   });
 
+  it('schedules every pad chord for its full length, shifted by the count-in', () => {
+    for (const countIn of [false, true]) {
+      const s = buildSchedule(riff, { countIn });
+      expect(s.pad).toHaveLength(riff.pad.length);
+      s.pad.forEach((c, i) => {
+        expect(c.ticks).toBe(s.riffStart + riff.pad[i]!.step * 48);
+        expect(c.durationTicks).toBe(riff.pad[i]!.length * 48);
+        expect(c.midis).toEqual(riff.pad[i]!.midis);
+      });
+      const last = s.pad.at(-1)!;
+      expect(last.ticks + last.durationTicks).toBe(s.riffEnd);
+    }
+  });
+
   it('honours a custom PPQ and rejects odd ones', () => {
     expect(buildSchedule(riff, { countIn: false, ppq: 96 }).ticksPerStep).toBe(24);
     expect(() => buildSchedule(riff, { countIn: false, ppq: 90 })).toThrow(RangeError);
@@ -107,6 +121,15 @@ describe('mixer', () => {
     m.drums.solo = true;
     expect(isAudible(m, 'drums')).toBe(true);
     expect(isAudible(m, 'guitar2')).toBe(false);
+  });
+
+  it('the synth is a fourth channel with the same rules', () => {
+    const m = defaultMixer();
+    expect(isAudible(m, 'synth')).toBe(true);
+    m.synth.solo = true;
+    for (const c of ['guitar1', 'guitar2', 'drums'] as const) expect(isAudible(m, c)).toBe(false);
+    m.synth.muted = true;
+    expect(isAudible(m, 'synth')).toBe(false);
   });
 
   it('both soloed means both heard', () => {
