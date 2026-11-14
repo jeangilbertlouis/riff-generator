@@ -180,6 +180,7 @@ input[type='range'] { accent-color: var(--accent); height: 28px; }
 .tab-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 8px; }
 .tab-head h2 { margin: 0; font-size: 1.05rem; }
 .summary { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.tab-actions { display: flex; gap: 8px; margin-left: auto; }
 .tab { min-height: 120px; }
 .tab svg { display: block; }
 

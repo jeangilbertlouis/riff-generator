@@ -2,7 +2,7 @@ import * as Tone from 'tone';
 import { DEFAULT_BPM } from '../engine/generate.ts';
 import type { Riff } from '../engine/types.ts';
 import { CountInVoice } from './countIn.ts';
-import { GuitarVoice } from './guitar.ts';
+import { GuitarVoice, TONE } from './guitar.ts';
 import { GUITARS, defaultMixer, isAudible, type GuitarId, type MixerState } from './mixer.ts';
 import { buildSchedule, positionAtTicks, type CursorPosition, type Schedule } from './schedule.ts';
 
@@ -196,7 +196,7 @@ export class Player {
     const immediate = !this.playing;
     for (const g of GUITARS) {
       this.audio.voices[g].setAudible(isAudible(this.mixer, g), immediate);
-      this.audio.voices[g].setVolume(-6 + this.mixer[g].volumeDb, immediate);
+      this.audio.voices[g].setVolume(TONE.outputDb + this.mixer[g].volumeDb, immediate);
     }
   }
 

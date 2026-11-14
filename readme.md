@@ -4,9 +4,9 @@ Generates random death metal riffs. You pick the key, scale and tempo. The app
 generates a riff, plays it back with two instruments, and shows the guitar part
 as tablature.
 
-> **Status:** Milestones 1–4 are done: riff engine, audio, SVG tab and the UI.
-> Polish (MIDI export, URL sharing, better tone) is next. This document holds
-> the plan, the findings and the decisions.
+> **Status:** All five milestones are done: riff engine, audio, SVG tab, UI,
+> and polish (share links, MIDI export, tighter guitar tone). This document
+> holds the plan, the findings and the decisions.
 
 ## Getting started
 
@@ -85,7 +85,10 @@ src/
     TabView.ts       # DOM: mounts the SVG, re-lays out on resize, moves the playback cursor
   ui/
     settings.ts      # pure: settings model, BPM/seed parsing, labels, → GenerateOptions
+    share.ts         # pure: settings ⇄ URL query string
     app.ts           # DOM wiring: controls, mixer, keyboard shortcuts, tab + player
+  export/
+    midi.ts          # pure: Riff → Standard MIDI File bytes (2 guitar tracks + tempo track)
   styles.css         # page styles, light/dark theme variables
   main.ts            # mounts the app
 tests/               # vitest unit tests for engine/
@@ -281,7 +284,7 @@ diatonic 3rd above the root is a minor 3rd, and above the ♭2 it is a major
    playback cursor. Detailed plan and findings in §6.2.
 4. ✅ **UI:** controls connected to generate and play, and the seed shown.
    Detailed plan and findings in §6.3.
-5. **Polish:** better guitar tone, MIDI export, sharing a riff via a seed in
+5. ✅ **Polish** (detailed plan and findings in §6.4): better guitar tone, MIDI export, sharing a riff via a seed in
    the URL.
 
 ### 6.1 Milestone 2 plan: audio
@@ -523,6 +526,121 @@ and seed. Sharing riffs through the URL is part of the polish milestone.
 - **Layout:** no sideways page scroll at 734 px or at 375 px (phone, light
   theme), and the tab fits its container. Light and dark themes both apply
   to the tab.
+
+### 6.4 Milestone 5 plan: polish
+
+Three independent pieces.
+
+**1. Sharing a riff through the URL** (`ui/share.ts`, pure and unit tested)
+
+- **Query string:** for example
+  `?key=E&scale=phrygian&bars=2&style=auto&g2=auto&bpm=180&seed=48213`.
+  `bpm` is the tempo the riff was **generated** with. An extra `tempo`
+  parameter appears only when the playback tempo was changed afterwards.
+  - Why both: in Auto, tempo influences the style choice. Encoding only
+    the playback tempo could give the recipient a different riff from the
+    one the sender hears.
+- **Updating the address bar:** after every regeneration and every committed
+  tempo change it is updated with `history.replaceState`, so it doesn't fill
+  the browser history. Tempo updates happen when the slider is released, not
+  on every move, which avoids browser rate limits on `replaceState`.
+- **Opening a link:** each value is checked separately. An invalid or
+  missing value falls back to the default, and a missing seed gets a random
+  one. A bad link never breaks the page.
+- **Copy link** button in the tablature header.
+
+**2. MIDI export** (`export/midi.ts`, pure and unit tested; no dependency)
+
+- **File format:** a Standard MIDI File, format 1, at 480 ticks per quarter
+  note.
+  - Track 0: tempo, 4/4 time signature and the riff name.
+  - Track 1 (Guitar 1) and track 2 (Guitar 2): channels 1 and 2, GM program
+    31 "Distortion Guitar", panned left and right.
+- **What's in it:** one pass of the riff, with no count-in. Note lengths and
+  velocities match what the app plays: palm mutes shorter and slightly
+  softer, accents louder.
+- **Event order:** at the same tick, note-offs come before note-ons, so
+  repeated notes on the same pitch retrigger properly.
+- **Testing:** the tests read the file back with a small parser and check
+  the header, tempo, and every note's pitch, start and length.
+- **Download:** a **Download MIDI** button saves
+  `riff-E-phrygian-180bpm-48213.mid`.
+
+**3. Better guitar tone** (`audio/guitar.ts`)
+
+Standard high-gain techniques the current chain lacks:
+
+- **Tight boost before the distortion:** a high-pass around 110 Hz and a mid
+  hump (+6 dB at 900 Hz), like an overdrive pedal in front of an amp. Low
+  palm mutes stop turning to mud, and the riff cuts through.
+- **Pick attack:** a very short burst of filtered noise into the distortion
+  on each note, so notes start like a pick hitting a string rather than like
+  a synth.
+- **Cab-style EQ after the distortion:** a mid scoop (−4 dB at 450 Hz), a
+  presence bump (+3 dB at 2.8 kHz) and a steeper low-pass at 5.5 kHz. This
+  replaces the 3-band EQ.
+- **Settings in one place:** all tone values live in one `TONE` object, so
+  they are easy to tune by ear later.
+
+Only the absence of problems can be checked by machine: no clipping, no
+silence, no errors. Whether it sounds better needs ears. The previous tone
+stays in git history for comparison.
+
+**Findings while building it:**
+
+- **Why a share link carries two tempos.** Tested with seed 229265: the sender
+  generated at 180 BPM, which Auto turned into a Chug riff, then slowed
+  playback to 100. Generating at 100 BPM would have given a Breakdown riff
+  instead. The link therefore stores both: `bpm=180&tempo=100`.
+- **Shared note shaping.** Note length and velocity rules now live in one
+  place (`soundingFraction` and `noteVelocity` in `audio/schedule.ts`), used by
+  both the audio and the MIDI export, so they can't drift apart.
+- **Tone, measured.** Band levels (in dB) of the left channel were measured on
+  two fixed riffs before and after the change:
+
+  | Riff | Measure | Before | After |
+  |------|---------|--------|-------|
+  | Chug | 60 Hz minus 900 Hz | 19.4 | 12.8 |
+  | Chug | 1.8 kHz | −19.1 | +0.6 |
+  | Chug | 5 kHz | −12.8 | −5.9 |
+  | Tremolo | 60 Hz minus 900 Hz | 27.3 | 16.9 |
+
+  The old tone was very bottom-heavy. The new chain shifts energy into the
+  mids and presence. RMS dropped by about 3 dB because the pick transient
+  raises the peaks, so the output level went from −6 dB to −3.5 dB. Peaks are
+  now about 0.65, below the −1 dB limiter.
+- **Rendering speed.** Offline renders now run at about real-time speed in the
+  browser pane (5.3 s for 5.9 s of audio). Tone advances its offline clock in
+  JavaScript, so this says little about real-time CPU load. Real-time playback
+  had no errors, but CPU use was not measured.
+- **Dev-server caching.** Vite once served a stale transform of `guitar.ts`
+  from between two quick edits. Touching the file fixed it. This only affects
+  development, not the build.
+
+**Verified:**
+
+- **Unit tests (108 in all):**
+  - 7 for share links: round-trip, escaping `#`, when `tempo` is added, that
+    a link reproduces the riff, and per-value fallback on bad input.
+  - 16 for MIDI: a separate parser reads every file back and checks the
+    header, tempo, time signature, channels, program, pan, End of Track, and
+    every note's pitch, start, length and velocity, for every key and scale.
+- **In the browser:**
+  - A link with `key=C%23…&bpm=200&seed=4242&tempo=150` restores every
+    control. The tab matches that riff, and Download MIDI produces exactly
+    the expected bytes, named `riff-Cs-locrian-150bpm-4242.mid`. The download
+    was intercepted rather than saved.
+  - A link full of invalid values opens normally on the defaults and
+    rewrites itself into a clean link.
+  - Changing the tempo adds `tempo=`, and opening that link fresh reproduces
+    the sender's tab exactly.
+  - Copy link reports success. Reading the clipboard back is blocked in the
+    preview pane, so its contents were not read back.
+  - Offline renders of chug, tremolo, gallop and breakdown riffs with the new
+    tone: no NaNs, peaks about 0.65, and muted guitars exactly silent.
+  - On a phone the share and MIDI buttons wrap below the heading, with no
+    sideways page scroll.
+- **Not verified:** how the new tone actually sounds.
 
 ---
 

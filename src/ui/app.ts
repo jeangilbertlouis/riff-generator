@@ -5,7 +5,9 @@ import { generateRiff } from '../engine/generate.ts';
 import { randomSeed } from '../engine/random.ts';
 import { NOTE_NAMES, type Archetype, type Bars, type Riff, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
 import { SCALE_IDS } from '../engine/theory.ts';
+import { midiFileName, riffToMidi } from '../export/midi.ts';
 import { TabView } from '../tab/TabView.ts';
+import { fromQuery, toQuery } from './share.ts';
 import {
   BARS_OPTIONS,
   GUITAR2_LABELS,
@@ -68,9 +70,14 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     position: el<HTMLSpanElement>(root, '#position'),
     summary: el<HTMLParagraphElement>(root, '#summary'),
     tab: el<HTMLDivElement>(root, '#tab'),
+    copyLink: el<HTMLButtonElement>(root, '#copy-link'),
+    downloadMidi: el<HTMLButtonElement>(root, '#download-midi'),
   };
 
-  const settings: Settings = defaultSettings();
+  // A shared link sets the starting riff; anything missing or invalid falls back to defaults.
+  const shared = fromQuery(location.search, defaultSettings());
+  const settings: Settings = shared.settings;
+  let currentRiff: Riff | null = null;
   const player = new Player({ loop: ui.loop.checked, countIn: ui.countIn.checked });
   const tabView = new TabView(ui.tab);
 
@@ -89,11 +96,27 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
 
   function regenerate(): void {
     const riff: Riff = generateRiff(toGenerateOptions(settings));
+    currentRiff = riff;
     ui.seed.value = String(settings.seed);
     setSeedError('');
     ui.summary.textContent = describeRiff(riff);
     tabView.render(riff);
     player.load(riff);
+    updateUrl();
+  }
+
+  /**
+   * Keep the address bar pointing at the current riff. `bpm` is the riff's generation
+   * tempo; `tempo` is added when playback was changed since. replaceState: no history spam.
+   */
+  function updateUrl(): void {
+    if (!currentRiff) return;
+    const query = toQuery({ settings: { ...settings, bpm: currentRiff.bpm }, tempo: settings.bpm });
+    try {
+      history.replaceState(null, '', `${location.pathname}${query}${location.hash}`);
+    } catch {
+      // Some browsers rate-limit replaceState; the next change will update it.
+    }
   }
 
   function setSeedError(message: string): void {
@@ -133,9 +156,41 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     applyBpm(ui.bpmRange.value);
     ui.bpmNumber.value = String(settings.bpm);
   });
+  // The URL updates when the slider is released, not on every move (replaceState rate limits).
+  ui.bpmRange.addEventListener('change', updateUrl);
   ui.bpmNumber.addEventListener('change', () => {
     applyBpm(ui.bpmNumber.value);
     showBpm(settings.bpm);
+    updateUrl();
+  });
+
+  // Sharing and export.
+  const flash = (button: HTMLButtonElement, text: string) => {
+    const original = button.dataset.label ?? button.textContent ?? '';
+    button.dataset.label = original;
+    button.textContent = text;
+    setTimeout(() => (button.textContent = original), 1500);
+  };
+  ui.copyLink.addEventListener('click', async () => {
+    updateUrl();
+    try {
+      await navigator.clipboard.writeText(location.href);
+      flash(ui.copyLink, 'Link copied');
+    } catch {
+      flash(ui.copyLink, 'Copy from the address bar');
+    }
+  });
+  ui.downloadMidi.addEventListener('click', () => {
+    if (!currentRiff) return;
+    const blob = new Blob([riffToMidi(currentRiff, settings.bpm)], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = midiFileName(currentRiff, settings.bpm);
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
 
   // Seed: Enter or leaving the field commits it.
@@ -233,5 +288,12 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
 
   syncMixer();
   regenerate();
+  // A shared link may carry a playback tempo that differs from the generation tempo.
+  if (shared.tempo !== null) {
+    settings.bpm = shared.tempo;
+    player.setBpm(settings.bpm);
+    showBpm(settings.bpm);
+    updateUrl();
+  }
   return { player, tabView };
 }

@@ -69,6 +69,19 @@ export function positionAtTicks(s: Schedule, ticks: number): CursorPosition {
   return { kind: 'riff', step: ((step % s.totalSteps) + s.totalSteps) % s.totalSteps };
 }
 
+/**
+ * How long a note actually sounds, as a fraction of its written length. Palm mutes are
+ * choked earlier; every note is cut a little before the next 16th. Shared by audio and MIDI.
+ */
+export function soundingFraction(palmMute: boolean): number {
+  return palmMute ? 0.75 : 0.92;
+}
+
+/** Note velocity 0–1: accents loud, palm mutes slightly softer. Shared by audio and MIDI. */
+export function noteVelocity(accent: boolean, palmMute: boolean): number {
+  return (accent ? 1 : 0.75) * (palmMute ? 0.9 : 1);
+}
+
 export function midiToFrequency(midi: number): number {
   return 440 * 2 ** ((midi - 69) / 12);
 }
