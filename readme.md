@@ -31,7 +31,7 @@ npm run build                             # static build in dist/
 | R3 | Choose the **scale** | List of scales in §4.2 |
 | R4 | Choose the **BPM** | Range 60–260; the default is 180 |
 | R5 | **Play back** the riff | In the app, with play/stop and loop |
-| R6 | Exactly **two instruments** | **Two guitars**, no drums or bass (decided) |
+| R6 | Exactly **two instruments** | **Two guitars**, no bass. A simple drum beat was added to playback later (§6.12) |
 | R7 | Show **guitar tablature** | Tab for both guitars, kept in step with playback, with a cursor on the current note |
 
 ---
@@ -69,6 +69,7 @@ src/
     riff.ts          # generator: assembles cells + pitches into Guitar 1's part
     complexity.ts    # complexity levels: profiles (range, leaps, cells, groupings, variation) and odd groupings
     harmony.ts       # chords on scale degrees, names, progression templates, chord timeline
+    drums.ts         # simple drum beat derived from the style and Guitar 1 (pure, no randomness)
     second.ts        # derives Guitar 2's part from Guitar 1 (see §4.6)
     generate.ts      # generateRiff(options): validation + wiring, the engine's entry point
     asciiTab.ts      # text tab for debugging and the CLI preview
@@ -80,6 +81,7 @@ src/
     mixer.ts         # pure: mute/solo/volume → per-guitar gain
     guitar.ts        # Tone.js guitar voice (synth + distortion + cab filter), one instance per guitar
     countIn.ts       # Tone.js muted-string scratch for the count-in
+    drums.ts         # Tone.js synthesized kit: kick, snare, hi-hat, crash
     player.ts        # transport: play/stop/loop, BPM, pan, solo/mute, cursor callbacks
   tab/
     layout.ts        # pure: Riff + width → systems, staves, note positions, palm-mute groups
@@ -1307,6 +1309,165 @@ What a fresh page load (a URL without parameters) starts with:
 - **Share links still say what they contain.** A link with missing values
   falls back to these new defaults, except a link with a seed but no `cx`,
   which still opens at Normal.
+
+### 6.12 Drums
+
+**Request:** a simple drum beat during playback. This revises R6 (two guitars,
+no drums): the riff and the tab stay two guitars, and the drums only
+accompany playback (and the MIDI export).
+
+**Choices I made** (easy to change):
+
+- **On by default,** with a **Drums** channel in the mixer (Mute, Solo,
+  volume), like the guitars.
+- **Synthesized, no samples,** to match the guitars and keep the app
+  asset-free.
+- **Included in the MIDI export** on General MIDI channel 10, so the file
+  matches what you hear.
+- **Not shown in the tab,** which stays guitar tablature.
+
+**The beat** (`engine/drums.ts`, pure and deterministic, derived from the
+riff; no randomness, so riffs and share links don't change):
+
+| Style | Kick | Snare | Hi-hat |
+|-------|------|-------|--------|
+| **Chug** | locked to Guitar 1's palm-muted hits, plus beat 1 | beats 2 and 4 | 8ths |
+| **Gallop** | locked to Guitar 1's palm-muted hits, plus beat 1 | beats 2 and 4 | 8ths |
+| **Tremolo** | every beat (a "skank" beat) | every off-beat 8th | quarters |
+| **Breakdown** | locked to Guitar 1's palm-muted hits, plus beat 1 | beat 3 only (half time) | quarters |
+
+- **A crash** on the first beat of each half of the riff (A and A′), with no
+  hi-hat under it.
+- **Accents:** beat-1 kicks and backbeat snares are accented; off-beat hats
+  are softer.
+- **Locking the kick to the palm-muted chugs** is what makes the drums sound
+  like they play *with* the riff rather than over it.
+- **The riff's main style decides the beat,** even when Complex or Extreme
+  switch style within the riff, so the groove stays steady.
+
+**Sound** (`audio/drums.ts`), centered:
+
+| Piece | Built from |
+|-------|------------|
+| Kick | a pitched membrane drum with a fast pitch drop, plus a short high noise click for the beater, so it cuts through distorted guitars |
+| Snare | a band-passed noise burst plus a short tuned body around 180 Hz |
+| Hi-hat | a metallic tone, very short |
+| Crash | a long, bright noise wash |
+
+- Every voice gets the same duplicate-event guard as the guitars (§6.1).
+- **Count-in:** unchanged (the muted-string scratch).
+
+**Code:**
+
+- `buildSchedule` adds a drum lane.
+- The mixer becomes three channels (`guitar1`, `guitar2`, `drums`); mute and
+  solo rules work across all three.
+- The MIDI writer adds a fourth track, using GM notes 36 kick, 38 snare,
+  42 closed hi-hat and 49 crash.
+
+**Tests:**
+
+- **Pattern rules per style:** beat-1 kick in every bar, snare placement,
+  crashes, and the hi-hat grid without a hat under a crash.
+- **Chug, gallop and breakdown:** the kick lands on every palm-muted
+  Guitar 1 note.
+- **Every pattern:** stays inside the riff, has one hit per piece per step,
+  and is deterministic.
+- **Plumbing:** the scheduled drum ticks (with the count-in offset), the
+  3-channel mute/solo rules, and the MIDI drum track on channel 10.
+- **In the browser:**
+  - drums are audible and centered;
+  - muting them is silent;
+  - peaks stay at or below the limiter;
+  - no console errors.
+
+**Findings while building it:**
+
+- **The MetalSynth hi-hat broke under Tone's offline clock.** It restarts six
+  internal oscillators per hit and schedules overlapping stops. Even with
+  clean, increasing hit times, its own state bookkeeping threw "Start time
+  must be strictly greater than previous start time". The hi-hat is now
+  high-passed noise with a 40 ms decay, like the other noise-based voices,
+  which have been reliable.
+- **Late events can collide.** When Tone runs an event late, it moves the
+  start up to "now", so two late hits can land on the same instant. All
+  voices (guitars, count-in, drums) now apply their duplicate guard to that
+  *effective* time (`effectiveTime` in `audio/guitar.ts`), not the requested
+  one. This also protects live playback during a CPU hiccup.
+- **The first level was far too loud.** At −3 dB the drums out-shouted the
+  guitars (RMS 0.19 vs 0.13). The kick's attack pushed the mix to 1.12, past
+  full scale, faster than the limiter reacts. The kit now plays at −13 dB.
+
+**Verified:**
+
+- **198 tests pass. New ones:**
+  - the beat for each style, written out bar by bar;
+  - on generated riffs (every level, style and length): a kick on beat 1 of
+    every bar, crashes at the start of each half, the kick on every
+    palm-muted note (more than 500 checked), hits inside the riff and
+    sorted, no doubles, no hat under a crash;
+  - determinism, and the riff's music being unaffected;
+  - drum scheduling with and without the count-in;
+  - the 3-channel mute/solo rules and the late-event time clamp;
+  - the MIDI drum track on channel 10 with GM sounds 36/38/42/49.
+  - The golden test is unchanged, so the riffs themselves did not change.
+- **Offline renders** of a chug, a tremolo and a breakdown riff:
+
+  | Riff | Drums alone (RMS) | Guitars alone (RMS) | Full-mix peak |
+  |------|-------------------|---------------------|---------------|
+  | Chug | 0.071 | 0.13–0.15 | 0.80 |
+  | Tremolo | 0.060 | 0.17 | 0.90 (the guitars alone reach 0.887) |
+  | Breakdown | 0.051 | 0.08–0.14 | 0.87 |
+
+  The drums are centered (left and right RMS equal), and muting
+  everything is exactly silent.
+- **Live in the browser:**
+  - Generate, Play, regenerating during playback and Stop raised no new
+    errors.
+  - The Drums row is in the mixer: Mute greys it out, and Solo on the drums
+    silences the guitars.
+- **Not verified:** how the kit sounds. The values are all in `KIT`
+  (`audio/drums.ts`).
+
+### 6.13 Feedback: more pronounced kick and snare
+
+**Measured first** (single accented hits through the kit, and the mix):
+
+| | Before | After |
+|-|--------|-------|
+| Kick peak / body (RMS, 100 ms) | −14.2 / −23.9 dB | **−7.8 / −18.9 dB** |
+| Snare peak / body | −19.6 / −35.3 dB | **−9.8 / −24.3 dB** |
+| Hi-hat peak | −29.3 dB | −31.0 dB |
+| Crash peak | −27.2 dB | −32.2 dB |
+| Drums vs guitars (RMS, 5 riffs) | 6–9 dB under | **1.7–5.2 dB under** |
+| Full-mix peak | 0.84–0.96 | **0.72–0.81** |
+
+The snare was the main problem: its body sat 11 dB under the kick and barely
+above the crash.
+
+**Changes** (`KIT` in `audio/drums.ts`):
+
+- **Snare:** body +10 dB and tuned to G3, a longer body (120 ms) and noise
+  tail (200 ms), a wider and lower crack (a 1.8 kHz band instead of
+  2.5 kHz, Q 0.6 instead of 0.8), and noise +10 dB.
+- **Kick:** +5 dB, and the beater click +10 dB with a lower high-pass
+  (2.5 kHz), so it cuts through the guitars.
+- **Hi-hat −4 dB, crash −4 dB**, so the kick and snare stand out.
+- **Non-accented hits:** kick and snare now play at 85 % velocity (they were
+  70 %); hi-hat 55 %, crash 70%.
+- **Kit output** −13 → −14.5 dB. Without that, the drums nearly equalled the
+  guitars on chug riffs (−0.4 dB), and the riff should stay on top.
+- **Master trim −1.5 dB before the limiter** (`MASTER.trimDb`). With the
+  louder kick, a locked kick and a guitar pick attack landing together
+  peaked at 0.985 on a gallop riff, faster than the limiter reacts. The trim
+  lowers everything equally, so the balance above is unchanged.
+
+**Verified:** 198 tests pass, and the build is clean. Live in the browser,
+play, regenerating and stopping raised no errors.
+
+- **The dev server stopped once** (exit code 1) right after a production
+  build ran alongside it. A restart fixed it; the app code was not involved.
+- **Not verified:** how it sounds. That needs your ears.
 
 ---
 

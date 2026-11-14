@@ -61,9 +61,25 @@ function guitarTrack(name: string, notes: NoteEvent[], channel: number, pan: num
   return track(events);
 }
 
+/** General MIDI drum channel (channel 10, 0-based 9) and percussion notes. */
+export const DRUM_CHANNEL = 9;
+export const GM_DRUMS: Record<Riff['drums'][number]['piece'], number> = { kick: 36, snare: 38, hat: 42, crash: 49 };
+
+function drumTrack(hits: Riff['drums']): number[] {
+  const events: TrackEvent[] = [{ tick: 0, order: 0, bytes: meta(0x03, ascii('Drums')) }];
+  for (const h of hits) {
+    const tick = h.step * TICKS_PER_STEP;
+    const note = GM_DRUMS[h.piece];
+    events.push({ tick, order: 2, bytes: [0x90 | DRUM_CHANNEL, note, h.accent ? 120 : 90] });
+    events.push({ tick: tick + TICKS_PER_STEP / 2, order: 1, bytes: [0x80 | DRUM_CHANNEL, note, 64] });
+  }
+  return track(events);
+}
+
 /**
- * A Standard MIDI File (format 1): tempo track + one track per guitar. One pass, no count-in.
- * `bpm` defaults to the riff's; pass the playback tempo if it was changed live.
+ * A Standard MIDI File (format 1): tempo track, one track per guitar, and a drum track on
+ * General MIDI channel 10. One pass, no count-in. `bpm` defaults to the riff's; pass the
+ * playback tempo if it was changed live.
  */
 export function riffToMidi(riff: Riff, bpm = riff.bpm): Uint8Array<ArrayBuffer> {
   const microsPerQuarter = Math.round(60_000_000 / bpm);
@@ -75,10 +91,11 @@ export function riffToMidi(riff: Riff, bpm = riff.bpm): Uint8Array<ArrayBuffer> 
     { tick: 0, order: 0, bytes: meta(0x51, [(microsPerQuarter >> 16) & 0xff, (microsPerQuarter >> 8) & 0xff, microsPerQuarter & 0xff]) },
   ]);
   const bytes = [
-    ...chunk('MThd', [...u16(1), ...u16(3), ...u16(MIDI_PPQ)]),
+    ...chunk('MThd', [...u16(1), ...u16(4), ...u16(MIDI_PPQ)]),
     ...tempoTrack,
     ...guitarTrack('Guitar 1', riff.guitar1, 0, PAN.guitar1),
     ...guitarTrack(`Guitar 2 (${riff.guitar2Mode})`, riff.guitar2, 1, PAN.guitar2),
+    ...drumTrack(riff.drums),
   ];
   return new Uint8Array(bytes);
 }

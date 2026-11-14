@@ -87,6 +87,8 @@ export type Riff = {
   chromaticPassing: boolean;
   /** The chord progression under the riff: one half's chords, repeated in the second half. */
   progression: ChordSlot[];
+  /** A simple drum beat for playback, derived from the style and Guitar 1 (see drums.ts). */
+  drums: { step: number; piece: 'kick' | 'snare' | 'hat' | 'crash'; accent: boolean }[];
   tuning: Tuning;
   guitar1: NoteEvent[];
   guitar2: NoteEvent[];

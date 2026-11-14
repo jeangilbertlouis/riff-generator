@@ -1,4 +1,5 @@
 import { PROFILES } from './complexity.ts';
+import { generateDrums } from './drums.ts';
 import { chooseProgression } from './harmony.ts';
 import { Rng, randomSeed } from './random.ts';
 import { chooseArchetype, generateGuitar1, makeMelodyContext } from './riff.ts';
@@ -54,6 +55,8 @@ export function generateRiff(options: GenerateOptions): Riff {
     complexity,
     chromaticPassing,
     progression,
+    // Derived after both guitars and without randomness, so the riff itself is unchanged.
+    drums: generateDrums({ archetype, totalSteps: bars * 16, guitar1: g1 }),
     tuning,
     guitar1: assignTabPositions(g1, tuning),
     guitar2: assignTabPositions(g2, tuning),

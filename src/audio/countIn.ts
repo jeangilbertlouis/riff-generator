@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import { DUPLICATE_WINDOW } from './guitar.ts';
+import { DUPLICATE_WINDOW, effectiveTime } from './guitar.ts';
 
 /** Muted-string scratch for the count-in: a short noise burst, band-passed and distorted, centered. */
 export class CountInVoice {
@@ -22,8 +22,9 @@ export class CountInVoice {
   }
 
   /** The first beat of the count-in is accented. */
-  click(time: number, accent: boolean): void {
-    if (time <= this.lastClick + DUPLICATE_WINDOW) return; // duplicate event from Tone's clock
+  click(requested: number, accent: boolean): void {
+    const time = effectiveTime(requested, this.noise.context.currentTime);
+    if (time <= this.lastClick + DUPLICATE_WINDOW) return; // duplicate (or late, clamped) event from Tone's clock
     this.lastClick = time;
     this.noise.triggerAttackRelease(0.05, time, accent ? 1 : 0.65);
   }

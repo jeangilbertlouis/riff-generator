@@ -14,6 +14,11 @@ export type PlayableNote = { midi: number; palmMute: boolean; accent: boolean };
 /** Seconds within which a repeated attack is treated as the same event. */
 export const DUPLICATE_WINDOW = 1e-4;
 
+/** The start time Tone will really use: events that run late are moved up to the current time. */
+export function effectiveTime(requested: number, now: number): number {
+  return Math.max(requested, now);
+}
+
 /** Every tone setting in one place, so it can be tuned by ear. */
 export const TONE = {
   /** Narrow spread: a wide detune smears the attack (the two saws phase against each other). */
@@ -107,7 +112,7 @@ export class GuitarVoice {
 
   /** Play one note at `time` (AudioContext seconds) for `duration` seconds. */
   play(note: PlayableNote, duration: number, time: number): void {
-    const t = time + this.delaySeconds;
+    const t = effectiveTime(time + this.delaySeconds, this.synth.context.currentTime);
     // Tone's clock can occasionally invoke the same event in two consecutive blocks, with a
     // time that differs only by float drift. A part is monophonic and real notes are ≥ ~58 ms
     // apart (a 16th at 260 BPM), so an attack within 0.1 ms of the previous one is a duplicate.

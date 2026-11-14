@@ -3,7 +3,8 @@ import { DEFAULT_BPM } from '../engine/generate.ts';
 import type { Riff } from '../engine/types.ts';
 import { CountInVoice } from './countIn.ts';
 import { GuitarVoice, TONE } from './guitar.ts';
-import { GUITARS, defaultMixer, isAudible, type GuitarId, type MixerState } from './mixer.ts';
+import { DrumKit, KIT } from './drums.ts';
+import { GUITARS, defaultMixer, isAudible, type ChannelId, type GuitarId, type MixerState } from './mixer.ts';
 import { buildSchedule, positionAtTicks, type CursorPosition, type Schedule } from './schedule.ts';
 
 export type PlayerOptions = { loop?: boolean; countIn?: boolean };
@@ -17,6 +18,11 @@ type StateListener = (playing: boolean) => void;
  */
 export const MASTER = {
   compressor: { threshold: -14, ratio: 3, knee: 6, attack: 0.03, release: 0.12 },
+  /**
+   * Overall trim before the limiter. With the louder kick and snare, a locked kick and a guitar
+   * pick attack landing together reached 0.985 (the limiter is too slow for that); −1.5 dB keeps headroom.
+   */
+  trimDb: -1.5,
   limiterDb: -1,
 } as const;
 
@@ -26,6 +32,7 @@ export const GUITAR2_OFFSET = { detuneCents: 4, delaySeconds: 0.004 } as const;
 type AudioGraph = {
   voices: Record<GuitarId, GuitarVoice>;
   countIn: CountInVoice;
+  drums: DrumKit;
   bus: Tone.ToneAudioNode[];
 };
 
@@ -149,17 +156,17 @@ export class Player {
     this.countIn = countIn;
   }
 
-  setMuted(id: GuitarId, muted: boolean): void {
+  setMuted(id: ChannelId, muted: boolean): void {
     this.mixer[id].muted = muted;
     this.applyMixer();
   }
 
-  setSolo(id: GuitarId, solo: boolean): void {
+  setSolo(id: ChannelId, solo: boolean): void {
     this.mixer[id].solo = solo;
     this.applyMixer();
   }
 
-  setVolume(id: GuitarId, db: number): void {
+  setVolume(id: ChannelId, db: number): void {
     this.mixer[id].volumeDb = db;
     this.applyMixer();
   }
@@ -183,6 +190,7 @@ export class Player {
     if (!this.audio) return;
     GUITARS.forEach((g) => this.audio?.voices[g].dispose());
     this.audio.countIn.dispose();
+    this.audio.drums.dispose();
     this.audio.bus.forEach((n) => n.dispose());
     this.audio = null;
   }
@@ -190,14 +198,16 @@ export class Player {
   private ensureAudio(): AudioGraph {
     if (this.audio) return this.audio;
     const limiter = new Tone.Limiter(MASTER.limiterDb).toDestination();
-    const compressor = new Tone.Compressor({ ...MASTER.compressor }).connect(limiter);
+    const trim = new Tone.Volume(MASTER.trimDb).connect(limiter);
+    const compressor = new Tone.Compressor({ ...MASTER.compressor }).connect(trim);
     this.audio = {
       voices: {
         guitar1: new GuitarVoice({ pan: -0.8, detuneCents: 0, delaySeconds: 0 }, compressor),
         guitar2: new GuitarVoice({ pan: 0.8, ...GUITAR2_OFFSET }, compressor),
       },
       countIn: new CountInVoice(compressor),
-      bus: [compressor, limiter],
+      drums: new DrumKit(compressor),
+      bus: [compressor, trim, limiter],
     };
     this.applyMixer();
     return this.audio;
@@ -211,6 +221,8 @@ export class Player {
       this.audio.voices[g].setAudible(isAudible(this.mixer, g), immediate);
       this.audio.voices[g].setVolume(TONE.outputDb + this.mixer[g].volumeDb, immediate);
     }
+    this.audio.drums.setAudible(isAudible(this.mixer, 'drums'), immediate);
+    this.audio.drums.setVolume(KIT.outputDb + this.mixer.drums.volumeDb, immediate);
   }
 
   private scheduleRiff(riff: Riff, countIn: boolean): void {
@@ -230,6 +242,9 @@ export class Player {
         // Converted when the note plays, so a live tempo change also changes note lengths.
         tr.schedule((time) => voice.play(note, this.ticksToSeconds(note.durationTicks), time), `${note.ticks}i`);
       }
+    }
+    for (const hit of s.drums) {
+      tr.schedule((time) => audio.drums.play(hit.piece, hit.accent, time), `${hit.ticks}i`);
     }
 
     tr.scheduleRepeat(

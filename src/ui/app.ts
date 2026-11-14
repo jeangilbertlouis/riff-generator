@@ -1,4 +1,4 @@
-import { GUITARS, isAudible, type GuitarId } from '../audio/mixer.ts';
+import { CHANNELS, isAudible } from '../audio/mixer.ts';
 import { Player } from '../audio/player.ts';
 import type { CursorPosition } from '../audio/schedule.ts';
 import { generateRiff } from '../engine/generate.ts';
@@ -260,25 +260,25 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   // Mixer.
   const syncMixer = () => {
     const mixer = player.getMixer();
-    for (const g of GUITARS) {
+    for (const g of CHANNELS) {
       const channel = el<HTMLDivElement>(root, `.channel[data-guitar="${g}"]`);
       el<HTMLButtonElement>(channel, '[data-action="mute"]').setAttribute('aria-pressed', String(mixer[g].muted));
       el<HTMLButtonElement>(channel, '[data-action="solo"]').setAttribute('aria-pressed', String(mixer[g].solo));
       channel.classList.toggle('silent', !isAudible(mixer, g));
     }
   };
-  for (const g of GUITARS) {
+  for (const g of CHANNELS) {
     const channel = el<HTMLDivElement>(root, `.channel[data-guitar="${g}"]`);
     el<HTMLButtonElement>(channel, '[data-action="mute"]').addEventListener('click', () => {
-      player.setMuted(g as GuitarId, !player.getMixer()[g].muted);
+      player.setMuted(g, !player.getMixer()[g].muted);
       syncMixer();
     });
     el<HTMLButtonElement>(channel, '[data-action="solo"]').addEventListener('click', () => {
-      player.setSolo(g as GuitarId, !player.getMixer()[g].solo);
+      player.setSolo(g, !player.getMixer()[g].solo);
       syncMixer();
     });
     const volume = el<HTMLInputElement>(channel, '[data-action="volume"]');
-    volume.addEventListener('input', () => player.setVolume(g as GuitarId, Number(volume.value)));
+    volume.addEventListener('input', () => player.setVolume(g, Number(volume.value)));
   }
 
   // Keyboard shortcuts (the focus rules live in shortcutFor and are unit tested).

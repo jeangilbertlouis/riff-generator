@@ -1,12 +1,12 @@
 import * as Tone from 'tone';
 import type { Riff } from '../engine/types.ts';
-import type { GuitarId } from './mixer.ts';
+import type { ChannelId } from './mixer.ts';
 import { Player } from './player.ts';
 
 export type OfflineOptions = {
   countIn?: boolean;
-  muted?: GuitarId[];
-  solo?: GuitarId[];
+  muted?: ChannelId[];
+  solo?: ChannelId[];
   /** Defaults to one pass of the riff (plus count-in) and a short tail. */
   seconds?: number;
 };

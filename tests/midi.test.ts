@@ -3,7 +3,16 @@ import { noteVelocity, soundingFraction } from '../src/audio/schedule.ts';
 import { generateRiff } from '../src/engine/generate.ts';
 import { SCALE_IDS } from '../src/engine/theory.ts';
 import { NOTE_NAMES, type NoteEvent, type Riff } from '../src/engine/types.ts';
-import { DISTORTION_GUITAR, MIDI_PPQ, TICKS_PER_STEP, midiFileName, riffToMidi, vlq } from '../src/export/midi.ts';
+import {
+  DISTORTION_GUITAR,
+  DRUM_CHANNEL,
+  GM_DRUMS,
+  MIDI_PPQ,
+  TICKS_PER_STEP,
+  midiFileName,
+  riffToMidi,
+  vlq,
+} from '../src/export/midi.ts';
 
 // ---- A small, independent Standard MIDI File reader for the tests ----
 type ParsedEvent = { tick: number; status: number; data: number[]; metaType?: number };
@@ -88,10 +97,23 @@ describe('riffToMidi', () => {
   const riff = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, bars: 2, seed: 7, guitar2Mode: 'harmony' });
   const parsed = readMidi(riffToMidi(riff));
 
-  it('writes a format-1 file with a tempo track and two guitar tracks', () => {
+  it('writes a format-1 file with a tempo track, two guitar tracks and a drum track', () => {
     expect(parsed.format).toBe(1);
-    expect(parsed.ntracks).toBe(3);
+    expect(parsed.ntracks).toBe(4);
     expect(parsed.division).toBe(MIDI_PPQ);
+  });
+
+  it('puts the drums on General MIDI channel 10, one note per hit with the GM drum sounds', () => {
+    const t = parsed.tracks[3]!;
+    expect(t.every((e) => e.status === 0xff || (e.status & 0x0f) === DRUM_CHANNEL)).toBe(true);
+    const ons = t.filter((e) => (e.status & 0xf0) === 0x90);
+    expect(ons).toHaveLength(riff.drums.length);
+    ons.forEach((e, i) => {
+      const hit = riff.drums[i]!;
+      expect(e.tick).toBe(hit.step * TICKS_PER_STEP);
+      expect(e.data[0]).toBe(GM_DRUMS[hit.piece]);
+    });
+    expect(GM_DRUMS).toEqual({ kick: 36, snare: 38, hat: 42, crash: 49 });
   });
 
   it('sets tempo and 4/4', () => {

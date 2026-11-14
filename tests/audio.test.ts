@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildSchedule, midiToFrequency, positionAtTicks } from '../src/audio/schedule.ts';
 import { defaultMixer, isAudible } from '../src/audio/mixer.ts';
+import { effectiveTime } from '../src/audio/guitar.ts';
 import { generateRiff } from '../src/engine/generate.ts';
 
 const riff = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, bars: 2, seed: 7 });
@@ -36,6 +37,18 @@ describe('buildSchedule', () => {
         expect(n.ticks).toBeGreaterThanOrEqual(s.riffStart);
         expect(n.ticks + n.durationTicks).toBeLessThanOrEqual(s.riffEnd);
       }
+    }
+  });
+
+  it('schedules every drum hit, shifted by the count-in like the guitars', () => {
+    for (const countIn of [false, true]) {
+      const s = buildSchedule(riff, { countIn });
+      expect(s.drums).toHaveLength(riff.drums.length);
+      s.drums.forEach((d, i) => {
+        expect(d.ticks).toBe(s.riffStart + riff.drums[i]!.step * 48);
+        expect(d.piece).toBe(riff.drums[i]!.piece);
+        expect(d.ticks).toBeLessThan(s.riffEnd);
+      });
     }
   });
 
@@ -83,6 +96,19 @@ describe('mixer', () => {
     expect(isAudible(m, 'guitar2')).toBe(false);
   });
 
+  it('the drums are a third channel: on by default, mutable, and covered by solo', () => {
+    const m = defaultMixer();
+    expect(isAudible(m, 'drums')).toBe(true);
+    m.drums.muted = true;
+    expect(isAudible(m, 'drums')).toBe(false);
+    m.drums.muted = false;
+    m.guitar1.solo = true;
+    expect(isAudible(m, 'drums')).toBe(false); // soloing a guitar silences the drums
+    m.drums.solo = true;
+    expect(isAudible(m, 'drums')).toBe(true);
+    expect(isAudible(m, 'guitar2')).toBe(false);
+  });
+
   it('both soloed means both heard', () => {
     const m = defaultMixer();
     m.guitar1.solo = true;
@@ -90,6 +116,12 @@ describe('mixer', () => {
     expect(isAudible(m, 'guitar1')).toBe(true);
     expect(isAudible(m, 'guitar2')).toBe(true);
   });
+});
+
+it('effectiveTime: late events are moved up to now, so two late hits share one instant (and the guard catches it)', () => {
+  expect(effectiveTime(1.5, 1.0)).toBe(1.5); // on time: unchanged
+  expect(effectiveTime(0.9, 1.0)).toBe(1.0); // late: clamped
+  expect(effectiveTime(0.95, 1.0)).toBe(effectiveTime(0.9, 1.0)); // two late hits collide
 });
 
 it('midiToFrequency: A4 = 440 Hz, E2 ≈ 82.4 Hz', () => {
