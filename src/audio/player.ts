@@ -68,14 +68,17 @@ export class Player {
     return this.riff;
   }
 
-  /** Load a riff. Its BPM becomes the playback tempo. If playing, playback restarts with the new riff. */
+  /**
+   * Load a riff. Its BPM becomes the playback tempo. If playing, the new riff starts
+   * at once without another count-in (the listener already has the tempo).
+   */
   load(riff: Riff): void {
     const wasPlaying = this.playing;
     if (wasPlaying) this.stop();
     this.riff = riff;
     this.bpm = riff.bpm;
     this.transport.bpm.value = riff.bpm;
-    if (wasPlaying) this.startTransport();
+    if (wasPlaying) this.startTransport(undefined, { countIn: false });
   }
 
   /** Start playback. Must be called from a user gesture the first time (browser audio unlock). */
@@ -85,11 +88,11 @@ export class Player {
   }
 
   /** Start the transport without unlocking audio (used directly by offline rendering). */
-  startTransport(time?: number): void {
+  startTransport(time?: number, options: { countIn?: boolean } = {}): void {
     if (!this.riff) throw new Error('No riff loaded');
     if (this.playing) this.stop();
     this.ensureAudio();
-    this.scheduleRiff(this.riff);
+    this.scheduleRiff(this.riff, options.countIn ?? this.countIn);
     this.transport.start(time);
     this.setPlaying(true);
   }
@@ -197,12 +200,12 @@ export class Player {
     }
   }
 
-  private scheduleRiff(riff: Riff): void {
+  private scheduleRiff(riff: Riff, countIn: boolean): void {
     const audio = this.ensureAudio();
     const tr = this.transport;
     tr.cancel(0);
     tr.bpm.value = this.bpm;
-    const s = buildSchedule(riff, { countIn: this.countIn, ppq: tr.PPQ });
+    const s = buildSchedule(riff, { countIn, ppq: tr.PPQ });
     this.schedule = s;
 
     s.countIn.forEach((ticks, beat) => {

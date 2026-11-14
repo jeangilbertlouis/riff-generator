@@ -4,8 +4,9 @@ Generates random death metal riffs. You pick the key, scale and tempo. The app
 generates a riff, plays it back with two instruments, and shows the guitar part
 as tablature.
 
-> **Status:** Milestones 1 (riff engine), 2 (audio) and 3 (SVG tab) are done.
-> The real UI comes next. This document holds the plan, the findings and the decisions.
+> **Status:** Milestones 1–4 are done: riff engine, audio, SVG tab and the UI.
+> Polish (MIDI export, URL sharing, better tone) is next. This document holds
+> the plan, the findings and the decisions.
 
 ## Getting started
 
@@ -15,7 +16,8 @@ Requires Node 22.18+ (the `riff` script runs TypeScript directly).
 npm install
 npm test                                  # engine unit tests
 npm run riff -- E phrygian 200 2 1234     # print a riff as text tab: key scale bpm bars [seed]
-npm run dev                               # preview page: generate, play/stop, BPM, loop, count-in, mute/solo, SVG tab with cursor
+npm run dev                               # the app at http://localhost:5173
+npm run build                             # static build in dist/
 ```
 
 ---
@@ -82,8 +84,10 @@ src/
     renderSvg.ts     # pure: layout → SVG markup
     TabView.ts       # DOM: mounts the SVG, re-lays out on resize, moves the playback cursor
   ui/
-    controls.ts      # key / scale / BPM / bars / G2 mode / generate / play
-  main.ts
+    settings.ts      # pure: settings model, BPM/seed parsing, labels, → GenerateOptions
+    app.ts           # DOM wiring: controls, mixer, keyboard shortcuts, tab + player
+  styles.css         # page styles, light/dark theme variables
+  main.ts            # mounts the app
 tests/               # vitest unit tests for engine/
 ```
 
@@ -275,7 +279,8 @@ diatonic 3rd above the root is a minor 3rd, and above the ♭2 it is a major
    BPM changes, mute/solo, count-in. Detailed plan and findings in §6.1.
 3. ✅ **Tab:** SVG renderer with two staves, palm-mute markings and a shared
    playback cursor. Detailed plan and findings in §6.2.
-4. **UI:** controls connected to generate and play, and the seed shown.
+4. ✅ **UI:** controls connected to generate and play, and the seed shown.
+   Detailed plan and findings in §6.3.
 5. **Polish:** better guitar tone, MIDI export, sharing a riff via a seed in
    the URL.
 
@@ -427,6 +432,97 @@ the SVG is never re-rendered during playback.
 - On a phone-width screen (375 px) the tab was 342 px inside a 343 px
   container, with no sideways page scroll. Resizing to 734 px re-laid it out
   from 4 rows to 2. The console showed no errors.
+
+### 6.3 Milestone 4 plan: the real UI
+
+Replaces the temporary preview page. It stays a single page with no framework:
+a few dozen controls don't need one, and plain TypeScript keeps the bundle
+small.
+
+**Layout** (top to bottom; it stacks on phones):
+
+1. **Header:** the app name and a one-line description.
+2. **Riff panel:**
+   - Settings: key, scale, bars, style (Auto, Tremolo, Gallop, Chug,
+     Breakdown) and Guitar 2 (Auto, Unison, Harmony, Counter-melody, Octave).
+   - Tempo: a BPM slider with a number box, 60–260.
+   - Seed: a number box with a copy button.
+   - Actions: a primary **Generate** button and a large **Play/Stop** button.
+   - Toggles: Loop and Count-in. Four count-in dots light up during the
+     count-in.
+3. **Riff summary:** tuning, the style and Guitar 2 mode that "Auto" picked,
+   and the seed.
+4. **Mixer:** for each guitar, Mute and Solo toggle buttons (`aria-pressed`)
+   and a volume slider (−24 to +6 dB).
+5. **Tab:** the SVG tab from milestone 3, with the playback cursor.
+
+**Behavior:**
+
+| Action | Result |
+|--------|--------|
+| **Generate** | New random seed, current settings, new riff |
+| Change key / scale / bars / style / Guitar 2 | Regenerate with the **same seed**, so the same "idea" can be heard in another key or scale |
+| Edit the seed (Enter or leaving the field) | Valid (whole number 0–4294967295): regenerate. Invalid: the field is marked invalid with a message and the riff is kept |
+| Change BPM | Tempo changes live. The value is also used for the next generation, where in Auto it influences the style choice |
+| Regenerate while playing | The new riff starts at once, **without** another count-in |
+| Mute / Solo / volume | Applies live |
+
+A riff is fully described by key, scale, bars, style, Guitar 2 mode, BPM
+and seed. Sharing riffs through the URL is part of the polish milestone.
+
+**Keyboard:**
+
+- <kbd>Space</kbd> plays or stops, <kbd>G</kbd> generates and <kbd>L</kbd>
+  toggles the loop.
+- These shortcuts are ignored while typing in a field or when a button has
+  focus, because <kbd>Space</kbd> already presses the focused button.
+
+**Theme:**
+
+- Light and dark come from `prefers-color-scheme`, using one set of CSS
+  variables that also feeds the tab's `--tab-*` colors.
+- The red accent signals "metal" without hurting contrast. Focus outlines
+  are visible.
+
+**Code:**
+
+- `ui/settings.ts` (pure, unit tested): the settings model, defaults,
+  parsing and validating BPM and seed, labels, and settings → generate
+  options.
+- `ui/app.ts`: the DOM wiring.
+- `styles.css`: the page styles.
+- `main.ts`: only mounts the app.
+
+**Findings while building it:**
+
+- **Mixer overflow.** At 734 px the two mixer channels in a `1fr 1fr` grid
+  were wider than the panel and made the whole page scroll sideways. The grid
+  now uses `repeat(auto-fit, minmax(min(100%, 330px), 1fr))`, so the channels
+  stack when there isn't room.
+- **Field wrapping.** At tablet width the Guitar 2 selector wrapped onto a row
+  of its own. A smaller base width for the wide fields keeps all five settings
+  on one row.
+- **TypeScript and CSS imports.** Importing `styles.css` needs the
+  `vite/client` types in `tsconfig.json`.
+
+**Verified in the browser:**
+
+- **Settings:** changing the key keeps the seed and gives a new riff (Drop C).
+  Switching back to E gives exactly the same tab as before.
+- **Seed:** Generate picks a new seed. Typing the old seed back reproduces
+  the original riff. An invalid seed ("12a") shows the message, sets
+  `aria-invalid` and keeps the riff; Escape restores the field.
+- **BPM:** the slider and the number box stay in sync, and 999 is clamped
+  to 260.
+- **Mixer:** Solo on Guitar 2 marks Guitar 1 as silent, and Mute toggles
+  `aria-pressed`.
+- **Keyboard, with real key presses:**
+  - Space starts playback, and the count-in dots light 1 → 4 before bar 1.
+  - G during playback goes straight into the new riff, with no count-in.
+  - L turns the loop off, and Space stops with no cursor left behind.
+- **Layout:** no sideways page scroll at 734 px or at 375 px (phone, light
+  theme), and the tab fits its container. Light and dark themes both apply
+  to the tab.
 
 ---
 

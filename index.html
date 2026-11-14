@@ -3,53 +3,84 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Generate random death metal riffs for two guitars, hear them and read the tab." />
     <title>Riff Generator</title>
-    <style>
-      :root {
-        --tab-bg: #111; --tab-text: #e6e6e6; --tab-line: #5a5a5a; --tab-muted: #9a9a9a;
-        --tab-accent: #ff5a4f; --tab-cursor: rgba(255, 90, 79, 0.2);
-      }
-      body { background: #111; color: #ddd; font-family: system-ui, sans-serif; margin: 2rem; }
-      @media (max-width: 600px) { body { margin: 1rem; } }
-      #tab { margin-top: 1rem; }
-      #info { color: #9a9a9a; font-size: 0.9rem; }
-      button, select, input { font-size: 0.95rem; padding: 0.3rem 0.6rem; }
-      .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 0.75rem 0; }
-      #position { font-family: ui-monospace, Consolas, monospace; min-width: 9rem; }
-    </style>
   </head>
   <body>
-    <h1>Riff Generator <small>(preview)</small></h1>
-    <p>Temporary controls for milestones 1–3. The real UI comes in milestone 4.</p>
+    <div class="app">
+      <header class="app-header">
+        <h1>Riff Generator</h1>
+        <p>Random death metal riffs for two guitars. Pick a key, scale and tempo, then generate.</p>
+      </header>
 
-    <div class="row">
-      <label>Key <select id="key"></select></label>
-      <label>Scale <select id="scale"></select></label>
-      <label>BPM <input id="bpm" type="number" min="60" max="260" value="180" style="width: 5rem" /></label>
-      <label>Bars
-        <select id="bars"><option>1</option><option selected>2</option><option>4</option></select>
-      </label>
-      <button id="generate">🎲 Generate</button>
+      <main>
+        <section class="panel" aria-label="Riff settings">
+          <div class="fields">
+            <label class="field"><span class="field-label">Key</span><select id="key"></select></label>
+            <label class="field field-wide"><span class="field-label">Scale</span><select id="scale"></select></label>
+            <label class="field"><span class="field-label">Bars</span><select id="bars"></select></label>
+            <label class="field"><span class="field-label">Style</span><select id="style"></select></label>
+            <label class="field field-wide"><span class="field-label">Guitar 2</span><select id="guitar2"></select></label>
+          </div>
+
+          <div class="fields">
+            <div class="field field-bpm">
+              <label class="field-label" for="bpm-number">BPM</label>
+              <div class="bpm-row">
+                <input id="bpm-range" type="range" min="60" max="260" step="1" aria-label="BPM slider" />
+                <input id="bpm-number" type="number" min="60" max="260" step="1" inputmode="numeric" />
+              </div>
+            </div>
+            <div class="field field-seed">
+              <label class="field-label" for="seed">Seed</label>
+              <div class="seed-row">
+                <input id="seed" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" aria-describedby="seed-error" />
+                <button id="copy-seed" type="button" class="btn btn-ghost btn-small">Copy</button>
+              </div>
+              <span id="seed-error" class="field-error" role="alert"></span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="generate" type="button" class="btn btn-primary">Generate</button>
+            <button id="play" type="button" class="btn btn-play"><span class="play-icon" aria-hidden="true"></span><span class="play-label">Play</span></button>
+            <label class="switch"><input id="loop" type="checkbox" checked /><span>Loop</span></label>
+            <label class="switch"><input id="countin" type="checkbox" checked /><span>Count-in</span></label>
+            <div class="beats" id="beats" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <span id="position" class="position"></span>
+          </div>
+        </section>
+
+        <section class="panel mixer" aria-label="Mixer">
+          <div class="channel" data-guitar="guitar1">
+            <span class="channel-name">Guitar 1 <small>left</small></span>
+            <button type="button" class="toggle" data-action="mute" aria-pressed="false">Mute</button>
+            <button type="button" class="toggle" data-action="solo" aria-pressed="false">Solo</button>
+            <input type="range" min="-24" max="6" step="1" value="0" data-action="volume" aria-label="Guitar 1 volume" />
+          </div>
+          <div class="channel" data-guitar="guitar2">
+            <span class="channel-name">Guitar 2 <small>right</small></span>
+            <button type="button" class="toggle" data-action="mute" aria-pressed="false">Mute</button>
+            <button type="button" class="toggle" data-action="solo" aria-pressed="false">Solo</button>
+            <input type="range" min="-24" max="6" step="1" value="0" data-action="volume" aria-label="Guitar 2 volume" />
+          </div>
+        </section>
+
+        <section class="panel tab-panel" aria-labelledby="tab-heading">
+          <div class="tab-head">
+            <h2 id="tab-heading">Tablature</h2>
+            <p id="summary" class="summary" aria-live="polite"></p>
+          </div>
+          <div id="tab" class="tab"></div>
+        </section>
+      </main>
+
+      <footer class="hint">
+        <kbd>Space</kbd> play / stop <span aria-hidden="true">·</span> <kbd>G</kbd> generate
+        <span aria-hidden="true">·</span> <kbd>L</kbd> loop
+      </footer>
     </div>
-
-    <div class="row">
-      <button id="play">▶ Play</button>
-      <label><input id="loop" type="checkbox" checked /> Loop</label>
-      <label><input id="countin" type="checkbox" checked /> Count-in</label>
-      <span id="position"></span>
-    </div>
-
-    <div class="row">
-      <span>Guitar 1 (L)</span>
-      <label><input data-mute="guitar1" type="checkbox" /> Mute</label>
-      <label><input data-solo="guitar1" type="checkbox" /> Solo</label>
-      <span style="margin-left: 1.5rem">Guitar 2 (R)</span>
-      <label><input data-mute="guitar2" type="checkbox" /> Mute</label>
-      <label><input data-solo="guitar2" type="checkbox" /> Solo</label>
-    </div>
-
-    <div id="info"></div>
-    <div id="tab"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
