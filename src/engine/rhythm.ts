@@ -5,7 +5,8 @@ import type { Archetype } from './types.ts';
  * - root:  the pedal tone (open low string)
  * - move:  a new scale note picked by the melody rules
  * - hold:  same pitch as the previous hit (tremolo)
- * - chrom: one semitone from the previous hit (chromatic run, passing tone)
+ * - chrom: a run step: the next scale note in the run's direction (or the next semitone,
+ *          a chromatic passing tone, when chromatic passing is switched on)
  * - back:  the pitch from two hits ago (trills: A B A B)
  * - leap:  a scale note at least a minor 3rd away, alternating direction (broken arpeggio)
  * - high:  a scale note from the upper part of the range (string skipping against the pedal)

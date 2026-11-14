@@ -32,7 +32,8 @@ export function generateRiff(options: GenerateOptions): Riff {
   const root = rootMidi(tuning, key);
 
   const archetype = !options.style || options.style === 'auto' ? chooseArchetype(bpm, rng) : options.style;
-  const ctx = makeMelodyContext(key, scale, root, highestPlayable(tuning), rng, profile);
+  const chromaticPassing = options.chromaticPassing ?? false;
+  const ctx = makeMelodyContext(key, scale, root, highestPlayable(tuning), rng, profile, chromaticPassing);
   const g1 = generateGuitar1(ctx, archetype, bars);
 
   const requested = options.guitar2Mode ?? 'auto';
@@ -49,6 +50,7 @@ export function generateRiff(options: GenerateOptions): Riff {
     totalSteps: bars * 16,
     archetype,
     complexity,
+    chromaticPassing,
     tuning,
     guitar1: assignTabPositions(g1, tuning),
     guitar2: assignTabPositions(g2, tuning),

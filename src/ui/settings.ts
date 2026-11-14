@@ -23,6 +23,8 @@ export type Settings = {
   style: Archetype | 'auto';
   guitar2Mode: SecondGuitarMode | 'auto';
   complexity: Complexity;
+  /** Runs may leave the scale by semitones. Off: every note stays in the chosen scale. */
+  chromaticPassing: boolean;
   bpm: number;
   seed: number;
 };
@@ -63,6 +65,7 @@ export function defaultSettings(seed = randomSeed()): Settings {
     style: 'auto',
     guitar2Mode: 'auto',
     complexity: DEFAULT_COMPLEXITY,
+    chromaticPassing: false,
     bpm: DEFAULT_BPM,
     seed,
   };
@@ -94,6 +97,7 @@ export function toGenerateOptions(s: Settings): GenerateOptions {
     style: s.style,
     guitar2Mode: s.guitar2Mode,
     complexity: s.complexity,
+    chromaticPassing: s.chromaticPassing,
   };
 }
 
@@ -104,6 +108,7 @@ export function describeRiff(riff: Riff): string {
     `${COMPLEXITY_LABELS[riff.complexity]} ${STYLE_LABELS[riff.archetype].toLowerCase()} riff`,
     `Guitar 2: ${GUITAR2_LABELS[riff.guitar2Mode].toLowerCase()}`,
     `${riff.bars} bar${riff.bars === 1 ? '' : 's'}`,
+    ...(riff.chromaticPassing ? ['chromatic passing'] : []),
   ].join(' · ');
 }
 

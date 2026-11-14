@@ -19,6 +19,7 @@ export function toQuery({ settings: s, tempo }: ShareState): string {
     bpm: String(s.bpm),
     seed: String(s.seed),
   });
+  if (s.chromaticPassing) params.set('chr', '1');
   if (tempo !== null && tempo !== s.bpm) params.set('tempo', String(tempo));
   return `?${params.toString()}`;
 }
@@ -39,6 +40,8 @@ export function fromQuery(query: string, defaults: Settings): ShareState {
     // Links from before complexity existed carry a seed but no `cx`: they were made at Normal,
     // so they open at Normal and still play the same riff.
     complexity: pickOption(get('cx'), COMPLEXITIES) ?? (parseSeed(get('seed')) !== null ? 'normal' : defaults.complexity),
+    // Only `chr=1` turns chromatic passing on; links without it (including old ones) stay in the scale.
+    chromaticPassing: get('chr') === '1',
     bpm: p.has('bpm') ? parseBpm(get('bpm'), defaults.bpm) : defaults.bpm,
     seed: parseSeed(get('seed')) ?? defaults.seed,
   };

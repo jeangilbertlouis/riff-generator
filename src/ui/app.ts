@@ -58,6 +58,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     style: el<HTMLSelectElement>(root, '#style'),
     guitar2: el<HTMLSelectElement>(root, '#guitar2'),
     complexity: el<HTMLSelectElement>(root, '#complexity'),
+    chromatic: el<HTMLInputElement>(root, '#chromatic'),
     bpmRange: el<HTMLInputElement>(root, '#bpm-range'),
     bpmNumber: el<HTMLInputElement>(root, '#bpm-number'),
     seed: el<HTMLInputElement>(root, '#seed'),
@@ -89,6 +90,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   fillSelect(ui.style, STYLE_OPTIONS, settings.style);
   fillSelect(ui.guitar2, GUITAR2_OPTIONS, settings.guitar2Mode);
   fillSelect(ui.complexity, COMPLEXITY_OPTIONS, settings.complexity);
+  ui.chromatic.checked = settings.chromaticPassing;
   showBpm(settings.bpm);
   ui.seed.value = String(settings.seed);
 
@@ -151,6 +153,10 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   });
   ui.complexity.addEventListener('change', () => {
     settings.complexity = pickOption(ui.complexity.value, COMPLEXITIES) ?? settings.complexity;
+    regenerate();
+  });
+  ui.chromatic.addEventListener('change', () => {
+    settings.chromaticPassing = ui.chromatic.checked;
     regenerate();
   });
 

@@ -928,6 +928,108 @@ stay open, and over half of notes that fit in frets 5–12 are played there.
 - The app shows the new fingering: riff seed 31, fretted notes average fret
   6.3, highest fret 8.
 
+### 6.8 Scale review: chromatic runs
+
+**Feedback:** Harmonic Minor riffs contained chromatic runs, which is wrong
+for that scale.
+
+**Review:**
+
+- **Scale definitions are correct.** All seven interval sets were checked
+  against theory: Phrygian `0 1 3 5 7 8 10`, Phrygian dominant
+  `0 1 4 5 7 8 10`, Locrian `0 1 3 5 6 8 10`, Natural minor
+  `0 2 3 5 7 8 10`, Harmonic minor `0 2 3 5 7 8 11`, Diminished half-whole
+  `0 1 3 4 6 7 9 10`, and Chromatic (all 12).
+- **The problem was not specific to Harmonic Minor.** An audit of 480 riffs
+  per scale (every key and complexity) found notes outside the scale in
+  **about 18 % of riffs in every scale except Chromatic**, 1–2 % of all
+  notes.
+
+  | Where they came from | Why |
+  |----------------------|-----|
+  | Guitar 1's run cells (`chromRun`, `chromRun8`) | Their `chrom` role steps by semitones whatever the scale. This was by design (§4.1, "chromatic passing tones"); those notes were flagged `passing` and greyed in the tab |
+  | Guitar 2 harmony and octave parts | They transpose Guitar 1's passing notes, so they leave the scale too |
+  | Trills | Can repeat a passing note |
+  | Tests | "every non-passing note is in the scale" allowed all of the above |
+
+- **Why it sounds wrong in Harmonic Minor:** the runs produced ♭7 and ♭2,
+  which contradict the scale's defining raised 7th and natural 2nd.
+- **Clean paths:** the ending (♭2 only in scales that have one), the
+  counter-melody, leaps, string skips and Simple were already strictly in
+  the scale.
+
+**Decision:** strict by default, plus a toggle.
+
+- **Runs follow the scale by default.** The run cells keep their rhythm and
+  direction, but each step goes to the next note *of the chosen scale*
+  instead of the next semitone. In the Chromatic scale that is still a
+  semitone, so nothing changes there.
+- **The toggle is "Chromatic passing notes"**, off by default and available
+  for every scale. Turned on, runs step by semitones as before (flagged
+  `passing`, greyed in the tab), and Guitar 2 follows them.
+- **Randomness is unchanged:** the run's direction choice draws the same
+  random number either way, so rhythm, style and Guitar 2 mode are identical
+  with the toggle on or off. Pitches change inside the runs, and also in
+  some later notes, because the melody continues from wherever a run ends
+  (measured below).
+- **Old links** have no toggle parameter, so they open strict. Riffs with
+  runs (about 18 %) play the corrected in-scale version, as agreed. Everything
+  else in those riffs is unchanged.
+- **Golden test:** it now generates with chromatic passing **on**, which is
+  exactly the old engine, so it still proves the old riffs are reproducible.
+
+**Changes:**
+
+- Engine option `chromaticPassing` (default `false`), stored on `Riff`.
+- `chrom` role: one scale step in the run's direction. A run that would go
+  below the root or past the top of the range turns around.
+- UI: a "Chromatic passing notes" switch next to the settings. Share
+  parameter `chr=1`, present only when it is on. The summary says
+  "chromatic passing" when it is on.
+
+**Tests:**
+
+- With the toggle off, *every* note of both guitars is in the scale, for
+  every key, scale, bar count and complexity, and nothing is flagged
+  `passing`.
+- With it on, the old rules apply: passing notes are flagged, and every
+  non-passing note is in the scale.
+- Runs move by exactly one scale step per note.
+- Rhythm and every pitch outside the runs are identical with the toggle on
+  and off.
+- Share links: `chr`, and old links opening strict.
+
+**Findings while building it:**
+
+- **The toggle doesn't change only the runs.** My plan said everything
+  outside the runs would be identical with the toggle on and off. A test
+  proved that wrong. Rhythm, style and Guitar 2 mode are identical, but the
+  next melodic choices start from wherever a run ends. Measured on 1,152
+  riffs (six non-chromatic scales, all keys and complexities): the toggle
+  changes **15.7 %** of riffs, and within those about **20 %** of Guitar 1's
+  notes. The run-step behavior is therefore tested directly, as a pure
+  function (`scaleRunStep`).
+- **Harmonic Minor runs now cross the augmented 2nd:** for example F → G♯,
+  never through G. They step C → B, never through B♭.
+
+**Verified:**
+
+- **The audit, re-run on the strict default: 0 % of notes outside the scale
+  for every scale**, in both guitars, across all keys and complexities.
+- 149 tests pass. New ones cover:
+  - the scale definitions;
+  - every note in the scale with the toggle off (1,008 riffs × 2 guitars);
+  - no ♭7 or ♭2 in Harmonic Minor;
+  - run steps, including turning around at the ends;
+  - toggle behavior, including the Chromatic scale being unaffected;
+  - share links with `chr`;
+  - the summary.
+  - The golden test still proves the old engine is reproducible (toggle on).
+- **In the browser** (A Harmonic Minor, Extreme tremolo, seed 2): off, there
+  are no passing notes; on, two greyed passing notes, `chr=1` in the link and
+  "chromatic passing" in the summary; off again, back to strict. The switch
+  fits the settings grid, with no sideways scroll.
+
 ---
 
 ## 7. Decisions

@@ -25,11 +25,11 @@ const digest = (r: Riff) =>
     .slice(0, 16);
 
 describe('Normal complexity is the original engine', () => {
-  it('reproduces all 84 riffs generated before complexity existed', () => {
+  it('reproduces all 84 riffs generated before complexity existed (with chromatic passing on, as they were)', () => {
     expect(golden.cases).toHaveLength(84);
     for (const { hash, ...opts } of golden.cases) {
-      expect(digest(generateRiff(opts)), `${opts.key} ${opts.scale} seed ${opts.seed}`).toBe(hash);
-      expect(digest(generateRiff({ ...opts, complexity: 'normal' }))).toBe(hash);
+      expect(digest(generateRiff({ ...opts, chromaticPassing: true })), `${opts.key} ${opts.scale} seed ${opts.seed}`).toBe(hash);
+      expect(digest(generateRiff({ ...opts, complexity: 'normal', chromaticPassing: true }))).toBe(hash);
     }
   });
 

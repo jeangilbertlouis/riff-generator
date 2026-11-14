@@ -16,6 +16,8 @@ export type MelodyContext = {
   /** Scale notes Guitar 1 may use, ascending, from the root up to the profile's range. */
   pool: number[];
   profile: ComplexityProfile;
+  /** Runs step by semitones (outside the scale) instead of scale steps. Off by default. */
+  chromaticPassing: boolean;
 };
 
 type MelodyState = {
@@ -45,8 +47,17 @@ export function makeMelodyContext(
   high: number,
   rng: Rng,
   profile: ComplexityProfile = PROFILES.normal,
+  chromaticPassing = false,
 ): MelodyContext {
-  return { key, scale, rng, root, profile, pool: scaleNotesInRange(key, scale, root, Math.min(root + profile.range, high)) };
+  return {
+    key,
+    scale,
+    rng,
+    root,
+    profile,
+    chromaticPassing,
+    pool: scaleNotesInRange(key, scale, root, Math.min(root + profile.range, high)),
+  };
 }
 
 /** The style's cell pool, adjusted by the complexity profile. Normal returns the original pool unchanged. */
@@ -146,6 +157,33 @@ function pickHigh(ctx: MelodyContext, current: number): number {
   return ctx.rng.weighted(high, (n) => (Math.abs(n - current) <= 4 ? 3 : 1) * (degreeOf(n, ctx.key) === 1 ? 2 : 1));
 }
 
+/**
+ * One step of a scale run: the next note of `pool` (ascending scale notes) from `current`
+ * in direction `dir`. At either end of the pool the run turns around. Returns the note and
+ * the (possibly reversed) direction.
+ */
+export function scaleRunStep(pool: number[], current: number, dir: number): { midi: number; dir: number } {
+  if (pool.length === 0) return { midi: current, dir };
+  let i = pool.indexOf(current);
+  if (i < 0) {
+    // `current` isn't a scale note (not expected in strict mode): start from the nearest one behind it.
+    const above = pool.findIndex((n) => n > current);
+    i = dir > 0 ? (above < 0 ? pool.length - 1 : above - 1) : above < 0 ? pool.length : above;
+  }
+  let next = i + dir;
+  if (next < 0 || next >= pool.length) {
+    dir = -dir;
+    next = i + dir;
+  }
+  return { midi: pool[Math.max(0, Math.min(pool.length - 1, next))] as number, dir };
+}
+
+function scaleStep(ctx: MelodyContext, state: MelodyState): number {
+  const { midi, dir } = scaleRunStep(ctx.pool, state.current, state.chromDir);
+  state.chromDir = dir;
+  return midi;
+}
+
 function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state: MelodyState): RawNote[] {
   const out: RawNote[] = [];
   let cellStart = startStep;
@@ -167,13 +205,19 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
           midi = state.current;
           break;
         case 'chrom': {
+          // The direction draw happens either way, so the toggle changes only the run's pitches.
           if (prevRole !== 'chrom') {
             state.chromDir = ctx.rng.chance(0.7) ? -1 : 1;
             if (state.current - 3 < ctx.root) state.chromDir = 1;
           }
-          midi = state.current + state.chromDir;
-          if (midi < ctx.root) midi = ctx.root;
-          state.passing = !isInScale(midi, ctx.key, ctx.scale);
+          if (ctx.chromaticPassing) {
+            midi = state.current + state.chromDir;
+            if (midi < ctx.root) midi = ctx.root;
+            state.passing = !isInScale(midi, ctx.key, ctx.scale);
+          } else {
+            midi = scaleStep(ctx, state);
+            state.passing = false;
+          }
           break;
         }
         case 'back':

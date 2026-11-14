@@ -36,7 +36,7 @@ export type NoteEvent = {
   midi: number;
   palmMute: boolean;
   accent: boolean;
-  /** Chromatic passing tone: allowed to sit outside the scale. */
+  /** Chromatic passing tone, outside the scale. Only when `chromaticPassing` is on. */
   passing: boolean;
   /** Tab string, 1 = highest string. */
   string: number;
@@ -53,6 +53,11 @@ export type GenerateOptions = {
   guitar2Mode?: SecondGuitarMode | 'auto';
   /** Defaults to 'normal', which reproduces riffs from before complexity existed. */
   complexity?: Complexity;
+  /**
+   * Let runs step by semitones, outside the scale (flagged `passing`). Default false: every
+   * note stays in the chosen scale.
+   */
+  chromaticPassing?: boolean;
 };
 
 export type Riff = {
@@ -66,6 +71,7 @@ export type Riff = {
   totalSteps: number;
   archetype: Archetype;
   complexity: Complexity;
+  chromaticPassing: boolean;
   tuning: Tuning;
   guitar1: NoteEvent[];
   guitar2: NoteEvent[];

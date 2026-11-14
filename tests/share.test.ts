@@ -11,6 +11,7 @@ const custom: Settings = {
   style: 'gallop',
   guitar2Mode: 'counter',
   complexity: 'extreme',
+  chromaticPassing: true,
   bpm: 205,
   seed: 4294967295,
 };
@@ -55,6 +56,15 @@ describe('share links', () => {
     expect(defaults.complexity).toBe('complex');
   });
 
+  it('adds chr=1 only when chromatic passing is on; anything else means off', () => {
+    expect(toQuery({ settings: custom, tempo: null })).toContain('chr=1');
+    expect(toQuery({ settings: { ...custom, chromaticPassing: false }, tempo: null })).not.toContain('chr');
+    expect(fromQuery('?seed=5&chr=1', defaults).settings.chromaticPassing).toBe(true);
+    for (const q of ['?seed=5', '?seed=5&chr=0', '?seed=5&chr=yes', '']) {
+      expect(fromQuery(q, defaults).settings.chromaticPassing).toBe(false);
+    }
+  });
+
   it('carries complexity as cx', () => {
     expect(toQuery({ settings: custom, tempo: null })).toContain('cx=extreme');
   });
@@ -63,7 +73,8 @@ describe('share links', () => {
     const old = '?key=A&scale=locrian&bars=2&style=auto&g2=auto&bpm=180&seed=777';
     const state = fromQuery(old, defaults);
     expect(state.settings.complexity).toBe('normal');
-    const original = generateRiff({ key: 'A', scale: 'locrian', bars: 2, bpm: 180, seed: 777 }); // engine default = Normal
+    expect(state.settings.chromaticPassing).toBe(false); // old links open with the corrected, in-scale runs
+    const original = generateRiff({ key: 'A', scale: 'locrian', bars: 2, bpm: 180, seed: 777 }); // engine defaults
     expect(generateRiff(toGenerateOptions(state.settings))).toEqual(original);
   });
 

@@ -44,11 +44,19 @@ describe('parseSeed', () => {
 });
 
 describe('settings', () => {
-  it('defaults to E Phrygian, 180 BPM, 2 bars, auto style and Guitar 2, Complex', () => {
+  it('defaults to E Phrygian, 180 BPM, 2 bars, auto style and Guitar 2, Complex, strict scale', () => {
     const s = defaultSettings(42);
     expect(s).toEqual({
-      key: 'E', scale: 'phrygian', bars: 2, style: 'auto', guitar2Mode: 'auto', complexity: 'complex', bpm: 180, seed: 42,
+      key: 'E', scale: 'phrygian', bars: 2, style: 'auto', guitar2Mode: 'auto', complexity: 'complex',
+      chromaticPassing: false, bpm: 180, seed: 42,
     });
+  });
+
+  it('passes the chromatic passing toggle to the engine and names it in the summary', () => {
+    const riff = generateRiff(toGenerateOptions({ ...defaultSettings(9), chromaticPassing: true }));
+    expect(riff.chromaticPassing).toBe(true);
+    expect(describeRiff(riff)).toMatch(/· chromatic passing$/);
+    expect(describeRiff(generateRiff(toGenerateOptions(defaultSettings(9))))).not.toContain('chromatic');
   });
 
   it('passes complexity through to the engine', () => {
