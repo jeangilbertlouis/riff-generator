@@ -16,35 +16,53 @@ export const DUPLICATE_WINDOW = 1e-4;
 
 /** Every tone setting in one place, so it can be tuned by ear. */
 export const TONE = {
-  oscillator: { type: 'fatsawtooth', count: 2, spread: 12 },
-  envelope: { attack: 0.002, decay: 0.08, sustain: 0.85, release: 0.05 },
+  /** Narrow spread: a wide detune smears the attack (the two saws phase against each other). */
+  oscillator: { type: 'fatsawtooth', count: 2, spread: 5 },
+  envelope: { attack: 0.002, decay: 0.08, sustain: 0.85, release: 0.02 },
   /** Low-pass before the amp: open notes vs palm mutes. */
   openCutoff: 3500,
   palmMuteCutoff: 700,
   /** "Tight" boost in front of the distortion, like an overdrive pedal: cut lows, push the mids. */
   tightHighpass: 110,
   midHump: { frequency: 900, gain: 6, Q: 0.8 },
-  distortion: 0.9,
+  /** A little less gain than 0.9: less compression from the amp, more note definition. */
+  distortion: 0.8,
   /** Pick attack: a very short, bright noise burst into the distortion. */
-  pick: { decay: 0.012, highpass: 2000, levelDb: -12 },
+  pick: { decay: 0.012, highpass: 2000, levelDb: -8 },
+  /**
+   * Post-amp note envelope (a per-note VCA after the cab). Distortion flattens any envelope in
+   * front of it, so punch and note separation are shaped here: a fast peak, a quick drop to a
+   * lower body (deeper and faster for palm mutes), a short dip before every note, and a hard
+   * cut at the end of the note so notes never smear into each other.
+   */
+  shape: {
+    dip: 0.0015,
+    attack: 0.002,
+    decay: 0.06,
+    sustain: 0.72,
+    pmDecay: 0.035,
+    pmSustain: 0.5,
+    release: 0.008,
+  },
   /** Cab-style EQ after the distortion. */
   postHighpass: 80,
   scoop: { frequency: 450, gain: -4, Q: 0.9 },
   presence: { frequency: 2800, gain: 3, Q: 1 },
   cabLowpass: 5500,
-  /** −3.5 rather than −6: the tighter, brighter chain measures ~3 dB quieter at the same peak. */
+  /** Output trim; tuned so peaks stay around −4 dBFS with the master bus. */
   outputDb: -3.5,
 } as const;
 
 /**
  * One distorted rhythm guitar:
  * synth → palm-mute low-pass → tight high-pass → mid hump → distortion (+ pick noise)
- * → high-pass → mid scoop → presence → cab low-pass → pan → volume → mute gain.
+ * → high-pass → mid scoop → presence → cab low-pass → note envelope → pan → volume → mute gain.
  */
 export class GuitarVoice {
   private readonly synth: Tone.Synth;
   private readonly pick: Tone.NoiseSynth;
   private readonly preFilter: Tone.Filter;
+  private readonly shaper: Tone.Gain;
   private readonly volume: Tone.Volume;
   private readonly gate: Tone.Gain;
   private readonly nodes: Tone.ToneAudioNode[];
@@ -64,6 +82,7 @@ export class GuitarVoice {
     const scoop = new Tone.Filter({ type: 'peaking', ...TONE.scoop });
     const presence = new Tone.Filter({ type: 'peaking', ...TONE.presence });
     const cab = new Tone.Filter({ type: 'lowpass', frequency: TONE.cabLowpass, rolloff: -24, Q: 0.5 });
+    this.shaper = new Tone.Gain(0);
     const panner = new Tone.Panner(options.pan);
     this.volume = new Tone.Volume(TONE.outputDb);
     this.gate = new Tone.Gain(1);
@@ -76,11 +95,13 @@ export class GuitarVoice {
     const pickLevel = new Tone.Volume(TONE.pick.levelDb);
     this.pick.chain(pickFilter, pickLevel, tight);
 
-    this.synth.chain(this.preFilter, tight, hump, distortion, highPass, scoop, presence, cab, panner, this.volume, this.gate);
+    this.synth.chain(
+      this.preFilter, tight, hump, distortion, highPass, scoop, presence, cab, this.shaper, panner, this.volume, this.gate,
+    );
     this.gate.connect(destination);
     this.nodes = [
       this.synth, this.pick, pickFilter, pickLevel, this.preFilter, tight, hump, distortion,
-      highPass, scoop, presence, cab, panner, this.volume, this.gate,
+      highPass, scoop, presence, cab, this.shaper, panner, this.volume, this.gate,
     ];
   }
 
@@ -97,6 +118,26 @@ export class GuitarVoice {
     const velocity = noteVelocity(note.accent, note.palmMute);
     this.synth.triggerAttackRelease(midiToFrequency(note.midi), length, t, velocity);
     this.pick.triggerAttackRelease(TONE.pick.decay, t, velocity);
+    this.shapeNote(t, length, velocity, note.palmMute);
+  }
+
+  /** Post-amp envelope for one note: dip → peak → body → hard cut (see TONE.shape). */
+  private shapeNote(t: number, length: number, velocity: number, palmMute: boolean): void {
+    const s = TONE.shape;
+    const g = this.shaper.gain;
+    // Accents hit harder after the amp too, where the distortion can't flatten them.
+    const peak = 0.7 + 0.3 * velocity;
+    const body = peak * (palmMute ? s.pmSustain : s.sustain);
+    const start = t + s.dip;
+    const peakAt = start + s.attack;
+    const end = t + length;
+    const bodyAt = Math.min(peakAt + (palmMute ? s.pmDecay : s.decay), end);
+    g.cancelAndHoldAtTime(t);
+    g.linearRampToValueAtTime(0, start);
+    g.linearRampToValueAtTime(peak, peakAt);
+    g.linearRampToValueAtTime(body, Math.max(bodyAt, peakAt + 0.001));
+    if (end > bodyAt) g.setValueAtTime(body, end);
+    g.linearRampToValueAtTime(0, Math.max(end, bodyAt) + s.release);
   }
 
   /** `immediate` skips the de-click ramp (used before playback starts). */
@@ -112,6 +153,9 @@ export class GuitarVoice {
 
   silence(): void {
     this.synth.triggerRelease();
+    const now = this.shaper.context.currentTime;
+    this.shaper.gain.cancelAndHoldAtTime(now);
+    this.shaper.gain.linearRampToValueAtTime(0, now + TONE.shape.release);
   }
 
   dispose(): void {

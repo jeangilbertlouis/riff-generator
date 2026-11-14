@@ -74,7 +74,8 @@ export function positionAtTicks(s: Schedule, ticks: number): CursorPosition {
  * choked earlier; every note is cut a little before the next 16th. Shared by audio and MIDI.
  */
 export function soundingFraction(palmMute: boolean): number {
-  return palmMute ? 0.75 : 0.92;
+  // Short palm mutes and a small gap after open notes keep fast riffs articulated.
+  return palmMute ? 0.7 : 0.88;
 }
 
 /** Note velocity 0–1: accents loud, palm mutes slightly softer. Shared by audio and MIDI. */

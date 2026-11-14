@@ -10,6 +10,19 @@ export type PlayerOptions = { loop?: boolean; countIn?: boolean };
 type CursorListener = (position: CursorPosition | null) => void;
 type StateListener = (playing: boolean) => void;
 
+/**
+ * Master bus. The compressor's attack is deliberately slow (30 ms): Web Audio's compressor has a
+ * ~6 ms look-ahead, and with a fast attack it ducked exactly the pick transient that makes a riff
+ * sound punchy. A slow attack lets each note's front edge through and only evens out the body.
+ */
+export const MASTER = {
+  compressor: { threshold: -14, ratio: 3, knee: 6, attack: 0.03, release: 0.12 },
+  limiterDb: -1,
+} as const;
+
+/** Guitar 2 sits a few ms late and a few cents sharp: wide enough to sound doubled, tight enough not to flam. */
+export const GUITAR2_OFFSET = { detuneCents: 4, delaySeconds: 0.004 } as const;
+
 type AudioGraph = {
   voices: Record<GuitarId, GuitarVoice>;
   countIn: CountInVoice;
@@ -176,12 +189,12 @@ export class Player {
 
   private ensureAudio(): AudioGraph {
     if (this.audio) return this.audio;
-    const limiter = new Tone.Limiter(-1).toDestination();
-    const compressor = new Tone.Compressor({ threshold: -18, ratio: 4, attack: 0.005, release: 0.1 }).connect(limiter);
+    const limiter = new Tone.Limiter(MASTER.limiterDb).toDestination();
+    const compressor = new Tone.Compressor({ ...MASTER.compressor }).connect(limiter);
     this.audio = {
       voices: {
         guitar1: new GuitarVoice({ pan: -0.8, detuneCents: 0, delaySeconds: 0 }, compressor),
-        guitar2: new GuitarVoice({ pan: 0.8, detuneCents: 6, delaySeconds: 0.008 }, compressor),
+        guitar2: new GuitarVoice({ pan: 0.8, ...GUITAR2_OFFSET }, compressor),
       },
       countIn: new CountInVoice(compressor),
       bus: [compressor, limiter],

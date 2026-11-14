@@ -642,6 +642,82 @@ stays in git history for comparison.
     sideways page scroll.
 - **Not verified:** how the new tone actually sounds.
 
+### 6.5 Tone revision: punch and precision
+
+**Feedback:** the guitar sound was "not very distinct". It should be punchier
+and more precise.
+
+**Measurement:** each guitar voice was rendered offline with exact note
+times, bypassing the transport (see the findings below). For every note:
+
+- **Attack:** the level of the first 15 ms compared with the body 50–90 ms in.
+  Positive means a note starts harder than it sustains, which is punch.
+- **Separation:** the level in the 6 ms just before the next note compared
+  with the note's attack. More negative means cleaner gaps, which is
+  precision.
+
+**Root causes found:**
+
+1. **The master compressor ate the attack.** Web Audio's compressor looks
+   ~6 ms ahead, so with a 5 ms attack it ducked each note's first milliseconds.
+   Raw synth peaks of about 0.38 came out at 0.15–0.22.
+2. **Distortion flattens any envelope in front of it**, so nothing restored a
+   transient after the amp.
+3. **Notes ran into each other:** long note lengths, a 50 ms release and a
+   high-sustain amp left almost no dip between back-to-back notes (about −1 dB).
+4. **Smearing:** a wide oscillator detune (±12 cents) and Guitar 2 sitting
+   8 ms late blurred every onset.
+
+**Changes:**
+
+| Where | Before | After |
+|-------|--------|-------|
+| Master compressor | −18 dB threshold, 4:1, 5 ms attack | −14 dB, 3:1, **30 ms attack** (transients pass), soft knee |
+| Post-amp note envelope | none | **new per-note shaper after the cab:** 1.5 ms dip, 2 ms rise to a peak scaled by velocity, then down to 72 % (open) or 50 % (palm mute) over 60 / 35 ms, cut 8 ms after the note ends |
+| Note length (audio and MIDI) | open 92 %, palm mute 75 % | open 88 %, palm mute 70 % |
+| Oscillator detune spread | 12 cents | 5 cents |
+| Synth release | 50 ms | 20 ms |
+| Distortion | 0.9 | 0.8 (less amp compression, more definition) |
+| Pick attack level | −12 dB | −8 dB |
+| Guitar 2 doubling | +6 cents, 8 ms late | +4 cents, 4 ms late |
+
+**Results** (both guitars, offline):
+
+| Riff | Attack: before → after | Separation: before → after |
+|------|------------------------|----------------------------|
+| Chug, 140 BPM | −1.4 → **+4.4 dB** | −33 → −63 dB |
+| Gallop, 200 BPM | −1.5 → **+4.4 dB** | −1.5 → **−32 dB** |
+| Tremolo, 220 BPM | (no notes long enough) | −0.6 → **−7.4 dB** |
+
+**Trade-off:** average level is 3–6 dB lower than before, because there is
+real silence between notes now and the peaks are higher (about 0.82–0.85).
+Raising the output further would push the transients into the −1 dB limiter,
+whose look-ahead would flatten them again. A first pass with an even shorter
+body (+6.6 dB attack) lost too much level and was eased back.
+
+**Findings while doing it:**
+
+- **Fixed output delay:** the chain delays sound by about 16 ms (synth start,
+  4× oversampling, compressor look-ahead). It is the same for every note, so
+  timing stays tight, but measurements must line up with where the sound
+  actually starts.
+- **Offline transport timing:** in `Tone.Offline`, transport events start
+  20–120 ms late by varying amounts, because Tone moves event times that are
+  already past to "now". Offline renders through the transport are fine for
+  level and clipping checks, but not for timing measurements. Real-time
+  playback uses a 100 ms look-ahead and is not affected.
+- **Throttled preview pane:** during this check the browser pane drew only
+  about 0.7 animation frames per second even with playback stopped, and
+  there were no long tasks. The cursor therefore updated in jumps. That is
+  the preview environment throttling the page, not the app.
+
+**Verified:** 108 tests, the type-check and the build pass. Offline renders
+through the full player (count-in, all styles, 90–260 BPM) have no NaNs,
+peaks of 0.73–0.85 and exactly silent mutes. Real-time playback and
+regenerating during playback ran with no console errors. **How it sounds
+still needs your ears.** Every value is in `TONE` (`audio/guitar.ts`) and
+`MASTER` / `GUITAR2_OFFSET` (`audio/player.ts`).
+
 ---
 
 ## 7. Decisions
