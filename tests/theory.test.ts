@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/engine/random.ts';
 import { SCALES, SCALE_IDS, scalePitchClasses, shiftByScaleSteps } from '../src/engine/theory.ts';
-import { assignTabPositions, positionsFor, rootMidi, tuningForKey } from '../src/engine/tuning.ts';
+import { assignTabPositions, fretCost, positionsFor, rootMidi, tuningForKey } from '../src/engine/tuning.ts';
 import { NOTE_NAMES } from '../src/engine/types.ts';
 
 describe('scales', () => {
@@ -40,11 +40,64 @@ describe('tuning', () => {
     }
   });
 
-  it('keeps a phrase in one hand position', () => {
+  it('keeps a phrase in one hand position, fretting rather than using an open string', () => {
     const t = tuningForKey('E');
-    // E F G A on the low strings: open E, then frets 1, 3, then open A.
+    // E F G A: the open low E and frets 1 and 3 are forced; A goes to fret 5 on the same string, not open A.
     const tab = assignTabPositions([40, 41, 43, 45].map((midi) => ({ midi })), t);
-    expect(tab.map((n) => [n.string, n.fret])).toEqual([[6, 0], [6, 1], [6, 3], [5, 0]]);
+    expect(tab.map((n) => [n.string, n.fret])).toEqual([[6, 0], [6, 1], [6, 3], [6, 5]]);
+  });
+});
+
+describe('fingering: higher up the fretboard', () => {
+  const t = tuningForKey('E');
+  const tab = (midis: number[]) => assignTabPositions(midis.map((midi) => ({ midi })), t);
+
+  it('costs: frets 5–12 are free, open strings and the first frets cost more, very high frets cost most', () => {
+    expect(fretCost(0)).toBeGreaterThan(fretCost(1));
+    expect(fretCost(1)).toBeGreaterThan(fretCost(4));
+    for (let f = 5; f <= 12; f++) expect(fretCost(f)).toBe(0);
+    expect(fretCost(15)).toBeGreaterThan(0);
+    expect(fretCost(20)).toBeGreaterThan(fretCost(15) + 3);
+  });
+
+  it('plays a lone note fretted up the neck instead of open', () => {
+    expect(tab([45]).map((n) => [n.string, n.fret])).toEqual([[6, 5]]); // A on the low E string, fret 5
+    expect(tab([50])[0]!.fret).toBeGreaterThanOrEqual(5); // D: A string 5 (or E 10), not the open D
+  });
+
+  it('keeps a melody in the 5–12 zone when every note can be there', () => {
+    // E3 F3 G3 A3 B3 C4: each has a position between frets 5 and 12.
+    for (const n of tab([52, 53, 55, 57, 59, 60])) {
+      expect(n.fret).toBeGreaterThanOrEqual(5);
+      expect(n.fret).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('an open-string pedal does not reset the hand', () => {
+    // Pedal on open low E between notes on the A string: the fretted notes stay together.
+    const fretted = tab([40, 50, 40, 52, 40, 53, 40, 52]).filter((n) => n.fret > 0).map((n) => n.fret);
+    expect(Math.max(...fretted) - Math.min(...fretted)).toBeLessThanOrEqual(4);
+  });
+
+  it('the lowest root stays on the open low string (it has no other position)', () => {
+    expect(tab([40, 40, 40]).every((n) => n.string === 6 && n.fret === 0)).toBe(true);
+  });
+
+  it('avoids big jumps between neighbours', () => {
+    const notes = tab([45, 47, 48, 50, 52, 53, 55, 57, 55, 53, 52, 50]);
+    for (let i = 1; i < notes.length; i++) {
+      if (notes[i]!.fret > 0 && notes[i - 1]!.fret > 0) {
+        expect(Math.abs(notes[i]!.fret - notes[i - 1]!.fret)).toBeLessThanOrEqual(5);
+      }
+    }
+  });
+
+  it('works on 7-string tunings and when there is nothing to choose', () => {
+    expect(assignTabPositions([], t)).toEqual([]);
+    const seven = tuningForKey('B');
+    const out = assignTabPositions([35, 40, 45].map((midi) => ({ midi })), seven);
+    expect(out[0]).toMatchObject({ string: 7, fret: 0 }); // low B, open: only position
+    expect(out[1]!.fret).toBeGreaterThan(0); // E: fretted on the B string (5), not the open E
   });
 });
 

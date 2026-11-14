@@ -59,39 +59,95 @@ export function positionsFor(midi: number, t: Tuning): TabPosition[] {
   return out;
 }
 
-/**
- * Give each note a (string, fret), walking the part in order and picking the
- * position that is cheapest to reach from the previous one.
- */
-export function assignTabPositions<T extends { midi: number }>(
-  notes: T[],
-  t: Tuning,
-): (T & TabPosition)[] {
-  const lowest = t.openStrings.length;
-  let prev: TabPosition = { string: lowest, fret: 0 };
-  return notes.map((note) => {
-    const options = positionsFor(note.midi, t);
-    if (options.length === 0) throw new Error(`MIDI ${note.midi} is not playable in ${t.name}`);
-    let best = options[0] as TabPosition;
-    let bestCost = Infinity;
-    for (const o of options) {
-      const cost = positionCost(prev, o);
-      if (cost < bestCost) {
-        best = o;
-        bestCost = cost;
-      }
-    }
-    // Open strings don't move the hand, so keep the previous fretting position.
-    if (best.fret > 0) prev = best;
-    else prev = { string: best.string, fret: prev.fret };
-    return { ...note, ...best };
-  });
+/** Fingering costs (readme §6.7). The zone between `zoneLow` and `zoneHigh` is free; everything else costs. */
+export const FINGERING = {
+  openString: 2.5,
+  /** Frets below the zone cost this much per fret of distance from it (fret 1 → 2.0, fret 4 → 0.5). */
+  belowZonePerFret: 0.5,
+  zoneLow: 5,
+  zoneHigh: 12,
+  aboveZonePerFret: 0.5,
+  /** Frets above this cost an extra 1 per fret. */
+  veryHigh: 17,
+  /** A reach within this many frets doesn't count as a position shift. */
+  stretch: 3,
+  stretchPerFret: 0.3,
+  shiftBase: 1,
+  shiftPerFret: 0.8,
+  stringChange: 0.3,
+} as const;
+
+/** How much we'd rather not play a note at this fret, regardless of context. */
+export function fretCost(fret: number): number {
+  const f = FINGERING;
+  if (fret === 0) return f.openString;
+  if (fret < f.zoneLow) return (f.zoneLow - fret) * f.belowZonePerFret;
+  if (fret <= f.zoneHigh) return 0;
+  return (fret - f.zoneHigh) * f.aboveZonePerFret + Math.max(0, fret - f.veryHigh);
 }
 
-function positionCost(prev: TabPosition, next: TabPosition): number {
-  // Open strings are free to reach from anywhere.
-  const fretMove = next.fret === 0 ? 0 : Math.abs(next.fret - prev.fret);
-  const stringMove = Math.abs(next.string - prev.string) * 0.6;
-  const highFret = next.fret > 12 ? (next.fret - 12) * 0.8 : 0;
-  return fretMove + stringMove + highFret;
+/** Cost of moving the fretting hand from `hand` (null = not placed yet) to `fret`. */
+export function handMoveCost(hand: number | null, fret: number): number {
+  if (hand === null) return 0;
+  const d = Math.abs(fret - hand);
+  const f = FINGERING;
+  return d <= f.stretch ? d * f.stretchPerFret : f.shiftBase + d * f.shiftPerFret;
+}
+
+type FingerState = {
+  pos: TabPosition;
+  /** Fret the hand is at: open strings don't move it, so it carries over from the last fretted note. */
+  hand: number | null;
+  cost: number;
+  /** Index of the best previous state (for backtracking). */
+  back: number;
+};
+
+/**
+ * Give each note a (string, fret), choosing the fingering for the whole part at once
+ * (a Viterbi search): prefer frets 5–12 over open strings and the first frets, keep the
+ * hand in one area, and stay on nearby strings. The search state is (position, hand
+ * fret), so an open-string pedal between fretted notes doesn't reset the hand.
+ */
+export function assignTabPositions<T extends { midi: number }>(notes: T[], t: Tuning): (T & TabPosition)[] {
+  if (notes.length === 0) return [];
+  const layers: FingerState[][] = [];
+
+  notes.forEach((note, i) => {
+    const options = positionsFor(note.midi, t);
+    if (options.length === 0) throw new Error(`MIDI ${note.midi} is not playable in ${t.name}`);
+
+    if (i === 0) {
+      layers.push(options.map((pos) => ({ pos, hand: pos.fret > 0 ? pos.fret : null, cost: fretCost(pos.fret), back: -1 })));
+      return;
+    }
+
+    const prev = layers[i - 1] as FingerState[];
+    const best = new Map<string, FingerState>();
+    for (const pos of options) {
+      prev.forEach((p, j) => {
+        const hand = pos.fret > 0 ? pos.fret : p.hand;
+        const cost =
+          p.cost +
+          fretCost(pos.fret) +
+          Math.abs(pos.string - p.pos.string) * FINGERING.stringChange +
+          (pos.fret > 0 ? handMoveCost(p.hand, pos.fret) : 0);
+        const key = `${pos.string}:${hand ?? '-'}`;
+        const existing = best.get(key);
+        if (!existing || cost < existing.cost) best.set(key, { pos, hand, cost, back: j });
+      });
+    }
+    layers.push([...best.values()]);
+  });
+
+  // Backtrack from the cheapest final state.
+  const last = layers.at(-1) as FingerState[];
+  let index = last.reduce((bi, s, si) => (s.cost < (last[bi] as FingerState).cost ? si : bi), 0);
+  const chosen: TabPosition[] = new Array(notes.length);
+  for (let i = notes.length - 1; i >= 0; i--) {
+    const state = (layers[i] as FingerState[])[index] as FingerState;
+    chosen[i] = state.pos;
+    index = state.back;
+  }
+  return notes.map((note, i) => ({ ...note, ...(chosen[i] as TabPosition) }));
 }

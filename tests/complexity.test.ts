@@ -12,9 +12,17 @@ const golden = JSON.parse(readFileSync(new URL('./fixtures/golden-riffs.json', i
   cases: GoldenCase[];
 };
 
-/** Same digest the fixture was made with (musical content only). */
+/**
+ * Same digest the fixture was made with: musical content only (timing, pitch, articulation).
+ * Tab positions are left out on purpose, so fingering changes don't count as different riffs.
+ */
+const strip = (notes: Riff['guitar1']) =>
+  notes.map(({ step, duration, midi, palmMute, accent, passing }) => [step, duration, midi, palmMute, accent, passing]);
 const digest = (r: Riff) =>
-  createHash('sha256').update(JSON.stringify([r.archetype, r.guitar2Mode, r.guitar1, r.guitar2])).digest('hex').slice(0, 16);
+  createHash('sha256')
+    .update(JSON.stringify([r.archetype, r.guitar2Mode, strip(r.guitar1), strip(r.guitar2)]))
+    .digest('hex')
+    .slice(0, 16);
 
 describe('Normal complexity is the original engine', () => {
   it('reproduces all 84 riffs generated before complexity existed', () => {

@@ -1,5 +1,5 @@
 {
- "note": "Riffs from before complexity existed; Normal must reproduce them exactly.",
+ "note": "Riffs from before complexity existed (musical content only, no tab positions); Normal must reproduce them exactly.",
  "cases": [
   {
    "key": "C",
@@ -7,7 +7,7 @@
    "bpm": 67,
    "bars": 4,
    "seed": 11,
-   "hash": "d8ae3c2b7f3376b8"
+   "hash": "30c84d94bfca5f1b"
   },
   {
    "key": "C",
@@ -15,7 +15,7 @@
    "bpm": 70,
    "bars": 2,
    "seed": 7930,
-   "hash": "0af18b0c8a04d614"
+   "hash": "4f33a4b1c79bafc5"
   },
   {
    "key": "C",
@@ -23,7 +23,7 @@
    "bpm": 73,
    "bars": 1,
    "seed": 15849,
-   "hash": "d7e265751fbcee36"
+   "hash": "a2eeed70963bfdf4"
   },
   {
    "key": "C",
@@ -31,7 +31,7 @@
    "bpm": 76,
    "bars": 4,
    "seed": 23768,
-   "hash": "7080d65742f52ccb"
+   "hash": "8fd988c52fcfc2a8"
   },
   {
    "key": "C",
@@ -39,7 +39,7 @@
    "bpm": 79,
    "bars": 2,
    "seed": 31687,
-   "hash": "e378ebe076a8682c"
+   "hash": "d25687b024b7570f"
   },
   {
    "key": "C",
@@ -47,7 +47,7 @@
    "bpm": 82,
    "bars": 1,
    "seed": 39606,
-   "hash": "6c3eda5ff3dad235"
+   "hash": "ff9d665e13fd4703"
   },
   {
    "key": "C",
@@ -55,7 +55,7 @@
    "bpm": 85,
    "bars": 4,
    "seed": 47525,
-   "hash": "a95949a86193e3a5"
+   "hash": "ca22f55a78d5564b"
   },
   {
    "key": "C#",
@@ -63,7 +63,7 @@
    "bpm": 88,
    "bars": 2,
    "seed": 55444,
-   "hash": "f47bf309af6069c3"
+   "hash": "299aa918c39594bf"
   },
   {
    "key": "C#",
@@ -71,7 +71,7 @@
    "bpm": 91,
    "bars": 1,
    "seed": 63363,
-   "hash": "f53365fcf9046e8d"
+   "hash": "d09b72a477ac7fd2"
   },
   {
    "key": "C#",
@@ -79,7 +79,7 @@
    "bpm": 94,
    "bars": 4,
    "seed": 71282,
-   "hash": "9c2676f641e038b1"
+   "hash": "b662b7e783efc4e4"
   },
   {
    "key": "C#",
@@ -87,7 +87,7 @@
    "bpm": 97,
    "bars": 2,
    "seed": 79201,
-   "hash": "978f397e4b6f78af"
+   "hash": "b6dedcf29075a87b"
   },
   {
    "key": "C#",
@@ -95,7 +95,7 @@
    "bpm": 100,
    "bars": 1,
    "seed": 87120,
-   "hash": "3ab526c63e9ebb3a"
+   "hash": "68faf75a8b52c328"
   },
   {
    "key": "C#",
@@ -103,7 +103,7 @@
    "bpm": 103,
    "bars": 4,
    "seed": 95039,
-   "hash": "c9c19a4f843f27f5"
+   "hash": "9561608bc9993681"
   },
   {
    "key": "C#",
@@ -111,7 +111,7 @@
    "bpm": 106,
    "bars": 2,
    "seed": 102958,
-   "hash": "81d242de4962453f"
+   "hash": "d9cf93ab3be07359"
   },
   {
    "key": "D",
@@ -119,7 +119,7 @@
    "bpm": 109,
    "bars": 1,
    "seed": 110877,
-   "hash": "a6202a94407d9297"
+   "hash": "738c6e1cb176665a"
   },
   {
    "key": "D",
@@ -127,7 +127,7 @@
    "bpm": 112,
    "bars": 4,
    "seed": 118796,
-   "hash": "4da5809eaf081824"
+   "hash": "a6978b36b9dfa5bc"
   },
   {
    "key": "D",
@@ -135,7 +135,7 @@
    "bpm": 115,
    "bars": 2,
    "seed": 126715,
-   "hash": "e418876e7735e806"
+   "hash": "845f9c1d53363615"
   },
   {
    "key": "D",
@@ -143,7 +143,7 @@
    "bpm": 118,
    "bars": 1,
    "seed": 134634,
-   "hash": "6371a5c38a969298"
+   "hash": "934532f951b95924"
   },
   {
    "key": "D",
@@ -151,7 +151,7 @@
    "bpm": 121,
    "bars": 4,
    "seed": 142553,
-   "hash": "f25f2e9b9b2de852"
+   "hash": "16d0ab87b9abb091"
   },
   {
    "key": "D",
@@ -159,7 +159,7 @@
    "bpm": 124,
    "bars": 2,
    "seed": 150472,
-   "hash": "6146ad2be3837ffe"
+   "hash": "7a57ccafd93f5587"
   },
   {
    "key": "D",
@@ -167,7 +167,7 @@
    "bpm": 127,
    "bars": 1,
    "seed": 158391,
-   "hash": "5061db7ae7e57567"
+   "hash": "1598cf612be68edc"
   },
   {
    "key": "D#",
@@ -175,7 +175,7 @@
    "bpm": 130,
    "bars": 4,
    "seed": 166310,
-   "hash": "149d5e1421c95142"
+   "hash": "80914319e720b5c2"
   },
   {
    "key": "D#",
@@ -183,7 +183,7 @@
    "bpm": 133,
    "bars": 2,
    "seed": 174229,
-   "hash": "e41fd69c34d05e6b"
+   "hash": "3cb3b5df4e6bfd49"
   },
   {
    "key": "D#",
@@ -191,7 +191,7 @@
    "bpm": 136,
    "bars": 1,
    "seed": 182148,
-   "hash": "7c080a804b9ee505"
+   "hash": "c365b4f73e2cadba"
   },
   {
    "key": "D#",
@@ -199,7 +199,7 @@
    "bpm": 139,
    "bars": 4,
    "seed": 190067,
-   "hash": "22f77f1658aa092d"
+   "hash": "ec94728e77df512d"
   },
   {
    "key": "D#",
@@ -207,7 +207,7 @@
    "bpm": 142,
    "bars": 2,
    "seed": 197986,
-   "hash": "f65aaaa839c31ab8"
+   "hash": "263cf019f25aa331"
   },
   {
    "key": "D#",
@@ -215,7 +215,7 @@
    "bpm": 145,
    "bars": 1,
    "seed": 205905,
-   "hash": "7c080a804b9ee505"
+   "hash": "c365b4f73e2cadba"
   },
   {
    "key": "D#",
@@ -223,7 +223,7 @@
    "bpm": 148,
    "bars": 4,
    "seed": 213824,
-   "hash": "c5ec111b0e1a7f7e"
+   "hash": "2ff1e40e09b3f9ee"
   },
   {
    "key": "E",
@@ -231,7 +231,7 @@
    "bpm": 151,
    "bars": 2,
    "seed": 221743,
-   "hash": "4085820204c95132"
+   "hash": "12a82a175de03ba3"
   },
   {
    "key": "E",
@@ -239,7 +239,7 @@
    "bpm": 154,
    "bars": 1,
    "seed": 229662,
-   "hash": "d8d49a3df80f2c4f"
+   "hash": "a35266f2f4ffe1d6"
   },
   {
    "key": "E",
@@ -247,7 +247,7 @@
    "bpm": 157,
    "bars": 4,
    "seed": 237581,
-   "hash": "bf69c0881a98ee20"
+   "hash": "d29715c48042cbad"
   },
   {
    "key": "E",
@@ -255,7 +255,7 @@
    "bpm": 160,
    "bars": 2,
    "seed": 245500,
-   "hash": "1047cee849080756"
+   "hash": "2729089f1724d5f8"
   },
   {
    "key": "E",
@@ -263,7 +263,7 @@
    "bpm": 163,
    "bars": 1,
    "seed": 253419,
-   "hash": "1560f100a71c758e"
+   "hash": "c440eb4c17fc2acd"
   },
   {
    "key": "E",
@@ -271,7 +271,7 @@
    "bpm": 166,
    "bars": 4,
    "seed": 261338,
-   "hash": "d7279bbd45e092d4"
+   "hash": "d5e5a4ff8fb45547"
   },
   {
    "key": "E",
@@ -279,7 +279,7 @@
    "bpm": 169,
    "bars": 2,
    "seed": 269257,
-   "hash": "18684327958876eb"
+   "hash": "23e8a5a1c7426ac5"
   },
   {
    "key": "F",
@@ -287,7 +287,7 @@
    "bpm": 172,
    "bars": 1,
    "seed": 277176,
-   "hash": "8b9e774a8a166dfc"
+   "hash": "cdbf17a78c3c85db"
   },
   {
    "key": "F",
@@ -295,7 +295,7 @@
    "bpm": 175,
    "bars": 4,
    "seed": 285095,
-   "hash": "4cbefa07ab537f92"
+   "hash": "410779402e678a5c"
   },
   {
    "key": "F",
@@ -303,7 +303,7 @@
    "bpm": 178,
    "bars": 2,
    "seed": 293014,
-   "hash": "ae3e9dbe22ea4c9a"
+   "hash": "c7ce8d4185a25e04"
   },
   {
    "key": "F",
@@ -311,7 +311,7 @@
    "bpm": 181,
    "bars": 1,
    "seed": 300933,
-   "hash": "1876d56b5e9457f0"
+   "hash": "92bacfd8e30c897e"
   },
   {
    "key": "F",
@@ -319,7 +319,7 @@
    "bpm": 184,
    "bars": 4,
    "seed": 308852,
-   "hash": "a5c96bd8b2ad043f"
+   "hash": "de0b0c1bb6eaa578"
   },
   {
    "key": "F",
@@ -327,7 +327,7 @@
    "bpm": 187,
    "bars": 2,
    "seed": 316771,
-   "hash": "d40040960c71cdad"
+   "hash": "5818bbe62522ebec"
   },
   {
    "key": "F",
@@ -335,7 +335,7 @@
    "bpm": 190,
    "bars": 1,
    "seed": 324690,
-   "hash": "8d5ebcb521bb5b16"
+   "hash": "55d537124b86832c"
   },
   {
    "key": "F#",
@@ -343,7 +343,7 @@
    "bpm": 193,
    "bars": 4,
    "seed": 332609,
-   "hash": "fef5cebe064e3e29"
+   "hash": "43ffa40647deec2c"
   },
   {
    "key": "F#",
@@ -351,7 +351,7 @@
    "bpm": 196,
    "bars": 2,
    "seed": 340528,
-   "hash": "6b593fd7aafc8077"
+   "hash": "711df84c4af22533"
   },
   {
    "key": "F#",
@@ -359,7 +359,7 @@
    "bpm": 199,
    "bars": 1,
    "seed": 348447,
-   "hash": "577391085c55d990"
+   "hash": "d375aa64b6c2747e"
   },
   {
    "key": "F#",
@@ -367,7 +367,7 @@
    "bpm": 202,
    "bars": 4,
    "seed": 356366,
-   "hash": "e0929a400dee8bfa"
+   "hash": "8a5141ceb73fd51b"
   },
   {
    "key": "F#",
@@ -375,7 +375,7 @@
    "bpm": 205,
    "bars": 2,
    "seed": 364285,
-   "hash": "f91eeca8cce7a7f4"
+   "hash": "0adee56b2a3f3919"
   },
   {
    "key": "F#",
@@ -383,7 +383,7 @@
    "bpm": 208,
    "bars": 1,
    "seed": 372204,
-   "hash": "e4a82970a1e5c981"
+   "hash": "98f72787351eefce"
   },
   {
    "key": "F#",
@@ -391,7 +391,7 @@
    "bpm": 211,
    "bars": 4,
    "seed": 380123,
-   "hash": "73c88ed590bff0e9"
+   "hash": "2ec17b6cb00845ce"
   },
   {
    "key": "G",
@@ -399,7 +399,7 @@
    "bpm": 214,
    "bars": 2,
    "seed": 388042,
-   "hash": "5c6888bab3e22277"
+   "hash": "2339ee7e1bdebc6e"
   },
   {
    "key": "G",
@@ -407,7 +407,7 @@
    "bpm": 217,
    "bars": 1,
    "seed": 395961,
-   "hash": "bb74840d7d366a9d"
+   "hash": "dd33bef5f8948d14"
   },
   {
    "key": "G",
@@ -415,7 +415,7 @@
    "bpm": 220,
    "bars": 4,
    "seed": 403880,
-   "hash": "2ddc24f641e717ce"
+   "hash": "4136087630427fa9"
   },
   {
    "key": "G",
@@ -423,7 +423,7 @@
    "bpm": 223,
    "bars": 2,
    "seed": 411799,
-   "hash": "9650cfc57803844e"
+   "hash": "1eb6e74ac51f9f37"
   },
   {
    "key": "G",
@@ -431,7 +431,7 @@
    "bpm": 226,
    "bars": 1,
    "seed": 419718,
-   "hash": "00fc2b552e553271"
+   "hash": "47637fe0fa878586"
   },
   {
    "key": "G",
@@ -439,7 +439,7 @@
    "bpm": 229,
    "bars": 4,
    "seed": 427637,
-   "hash": "b2bd4f40010b7623"
+   "hash": "0b086bfaa40f3d73"
   },
   {
    "key": "G",
@@ -447,7 +447,7 @@
    "bpm": 232,
    "bars": 2,
    "seed": 435556,
-   "hash": "aeaa54d2a2fc28ab"
+   "hash": "91ddd1ed9c5bf18c"
   },
   {
    "key": "G#",
@@ -455,7 +455,7 @@
    "bpm": 235,
    "bars": 1,
    "seed": 443475,
-   "hash": "1797049eaf4461e5"
+   "hash": "a4cf319e994efb26"
   },
   {
    "key": "G#",
@@ -463,7 +463,7 @@
    "bpm": 238,
    "bars": 4,
    "seed": 451394,
-   "hash": "9e3f2c975a409368"
+   "hash": "d25c829c0f2cc42c"
   },
   {
    "key": "G#",
@@ -471,7 +471,7 @@
    "bpm": 241,
    "bars": 2,
    "seed": 459313,
-   "hash": "97d1af4bd3dc5edb"
+   "hash": "77a473cf628d9cc7"
   },
   {
    "key": "G#",
@@ -479,7 +479,7 @@
    "bpm": 244,
    "bars": 1,
    "seed": 467232,
-   "hash": "81060e00f2da5f37"
+   "hash": "58b021a140bda1d2"
   },
   {
    "key": "G#",
@@ -487,7 +487,7 @@
    "bpm": 247,
    "bars": 4,
    "seed": 475151,
-   "hash": "7c22d0e91bc1a973"
+   "hash": "1590456b6f1e75b7"
   },
   {
    "key": "G#",
@@ -495,7 +495,7 @@
    "bpm": 250,
    "bars": 2,
    "seed": 483070,
-   "hash": "961c24971c7d53cd"
+   "hash": "6ee39d495894b929"
   },
   {
    "key": "G#",
@@ -503,7 +503,7 @@
    "bpm": 253,
    "bars": 1,
    "seed": 490989,
-   "hash": "e6e4211850ac35c1"
+   "hash": "cb68680112bbf388"
   },
   {
    "key": "A",
@@ -511,7 +511,7 @@
    "bpm": 256,
    "bars": 4,
    "seed": 498908,
-   "hash": "13aff0bbbfd7a622"
+   "hash": "c067593ce21b473f"
   },
   {
    "key": "A",
@@ -519,7 +519,7 @@
    "bpm": 259,
    "bars": 2,
    "seed": 506827,
-   "hash": "f440d9666a8de31b"
+   "hash": "c7b2860f998a58e6"
   },
   {
    "key": "A",
@@ -527,7 +527,7 @@
    "bpm": 62,
    "bars": 1,
    "seed": 514746,
-   "hash": "e2bcb1ba215d4e1b"
+   "hash": "e723abc609ccf72b"
   },
   {
    "key": "A",
@@ -535,7 +535,7 @@
    "bpm": 65,
    "bars": 4,
    "seed": 522665,
-   "hash": "b7c0472c50d25726"
+   "hash": "8eb675ab20c866ce"
   },
   {
    "key": "A",
@@ -543,7 +543,7 @@
    "bpm": 68,
    "bars": 2,
    "seed": 530584,
-   "hash": "e28b9268378e669a"
+   "hash": "3f2494ba445e9aca"
   },
   {
    "key": "A",
@@ -551,7 +551,7 @@
    "bpm": 71,
    "bars": 1,
    "seed": 538503,
-   "hash": "de0607e1cac555a9"
+   "hash": "ccf4809647b61774"
   },
   {
    "key": "A",
@@ -559,7 +559,7 @@
    "bpm": 74,
    "bars": 4,
    "seed": 546422,
-   "hash": "c9da83dd4a8f18a4"
+   "hash": "02528d80a483e8bc"
   },
   {
    "key": "A#",
@@ -567,7 +567,7 @@
    "bpm": 77,
    "bars": 2,
    "seed": 554341,
-   "hash": "93aa71dbf4a0958d"
+   "hash": "7306da14607e5681"
   },
   {
    "key": "A#",
@@ -575,7 +575,7 @@
    "bpm": 80,
    "bars": 1,
    "seed": 562260,
-   "hash": "19ab226ed6d9f2e7"
+   "hash": "f9d324bcaa966c32"
   },
   {
    "key": "A#",
@@ -583,7 +583,7 @@
    "bpm": 83,
    "bars": 4,
    "seed": 570179,
-   "hash": "ec7ad6d337ff49ad"
+   "hash": "04a6ea70b4e7c897"
   },
   {
    "key": "A#",
@@ -591,7 +591,7 @@
    "bpm": 86,
    "bars": 2,
    "seed": 578098,
-   "hash": "79c293752b3df76f"
+   "hash": "9e019706a204cd89"
   },
   {
    "key": "A#",
@@ -599,7 +599,7 @@
    "bpm": 89,
    "bars": 1,
    "seed": 586017,
-   "hash": "dcc75fdf702ad48d"
+   "hash": "62aaf72cd687cd96"
   },
   {
    "key": "A#",
@@ -607,7 +607,7 @@
    "bpm": 92,
    "bars": 4,
    "seed": 593936,
-   "hash": "a7b3a805699a98bf"
+   "hash": "790336903ee90e2f"
   },
   {
    "key": "A#",
@@ -615,7 +615,7 @@
    "bpm": 95,
    "bars": 2,
    "seed": 601855,
-   "hash": "4cc1990920c95736"
+   "hash": "b98707d8cd92ecdd"
   },
   {
    "key": "B",
@@ -623,7 +623,7 @@
    "bpm": 98,
    "bars": 1,
    "seed": 609774,
-   "hash": "928bcf56ecac3e40"
+   "hash": "87ea2a6e2e9e29a2"
   },
   {
    "key": "B",
@@ -631,7 +631,7 @@
    "bpm": 101,
    "bars": 4,
    "seed": 617693,
-   "hash": "ba4d3af28b89ae84"
+   "hash": "a594e59ddd3e8e96"
   },
   {
    "key": "B",
@@ -639,7 +639,7 @@
    "bpm": 104,
    "bars": 2,
    "seed": 625612,
-   "hash": "9a840312c9d516c3"
+   "hash": "004498cce9f9be81"
   },
   {
    "key": "B",
@@ -647,7 +647,7 @@
    "bpm": 107,
    "bars": 1,
    "seed": 633531,
-   "hash": "87f208d6d90542db"
+   "hash": "994c9779cb0e25c5"
   },
   {
    "key": "B",
@@ -655,7 +655,7 @@
    "bpm": 110,
    "bars": 4,
    "seed": 641450,
-   "hash": "ec85dd0dfb1dbdc1"
+   "hash": "3d66ba22c06d2660"
   },
   {
    "key": "B",
@@ -663,7 +663,7 @@
    "bpm": 113,
    "bars": 2,
    "seed": 649369,
-   "hash": "c23e49e2fd89e49b"
+   "hash": "c830f05fa051cdff"
   },
   {
    "key": "B",
@@ -671,7 +671,7 @@
    "bpm": 116,
    "bars": 1,
    "seed": 657288,
-   "hash": "03c5755013e65ddf"
+   "hash": "c5f61d4c8d95d4ca"
   }
  ]
 }

@@ -196,8 +196,9 @@ which is idiomatic:
 | A | Drop A, 7-string |
 | F, F#, G, G# | E standard, root fretted on the low string (frets 1–4) |
 
-The tab mapping chooses the (string, fret) position that is cheapest to reach
-from the previous note, preferring frets 0–7 on the low strings.
+The tab mapping prefers playing **up the fretboard** (frets 5–12) over open
+strings and the first frets, while keeping the hand in one area. §6.7 has
+the details.
 
 ### 4.4 Structure
 
@@ -835,6 +836,97 @@ in the UI sets how far the generator goes.
   - no sideways page scroll at desktop or phone width;
   - a Complex and an Extreme riff render through the audio player with no
     NaNs (peaks 0.74–0.83) and export to MIDI.
+
+### 6.7 Fingering: play higher up the fretboard
+
+**Feedback:** when writing out the tab, prefer playing notes higher up the
+fretboard.
+
+**Before** (60 riffs per complexity, both guitars, every key):
+
+- fretted notes average **fret 2.5–3.2**;
+- about **40 %** of notes are open strings, and about a third of those
+  (14 % of all notes) could have been fretted elsewhere.
+
+The old mapping was greedy: note by note, it took the position nearest the
+previous one, and open strings cost nothing. So it hugged the nut.
+
+**Plan:** replace the greedy choice with an optimizer that looks at the
+**whole part at once** (a Viterbi / dynamic-programming search over every
+playable position of every note). It minimizes the sum of:
+
+| Cost | Value | Purpose |
+|------|-------|---------|
+| **Position**: open string | 2.5 | open strings only when nothing else is possible, or when it clearly saves a shift |
+| Position: frets 1–4 | 2.0 → 0.5 (lower fret costs more) | nudge notes up the neck |
+| Position: frets 5–12 | 0 | the target zone |
+| Position: frets 13–17 | 0.5 per fret above 12 | reachable, but not the default |
+| Position: frets above 17 | an extra 1 per fret | rarely needed |
+| **Hand move** within a stretch (≤ 3 frets) | 0.3 per fret | small reaches are cheap |
+| Hand move: a real position shift | 1 + 0.8 per fret | avoid jumping around |
+| **String change** | 0.3 per string | prefer staying on nearby strings |
+
+- **Open strings don't move the hand.** The search remembers where the
+  fretting hand is across open notes: the open-string pedal root that many
+  riffs return to doesn't reset the hand position. That needs a state of
+  (position, hand fret), not just position, so the search runs over those
+  pairs.
+- **The lowest root stays open where it must.** It is on the open low string
+  and has no other position. Notes with only one position are unaffected.
+- **Nothing musical changes:** same notes, same rhythm. Only string and
+  fret move. The golden test now hashes musical content only, so it still
+  guards the riffs themselves.
+
+**Tests:**
+
+- every position plays the right pitch;
+- a note that can be fretted at 5–12 is never left on an open string or the
+  first frets without a reason;
+- the whole sweep still produces playable tab;
+- fingering statistics: the average fret rises into the target zone, there
+  are fewer avoidable open strings, and hand shifts stay moderate.
+
+**Results** (same 60 riffs per level, before → after):
+
+| Level | Average fretted fret | Avoidable open strings | Hand shifts over 5 frets |
+|-------|----------------------|------------------------|--------------------------|
+| Simple | 2.5 → 4.4 | 11 % → 0 % | 0 → 0 |
+| Normal | 2.8 → 5.1 | 14 % → 1 % | 0 → 0 |
+| Complex | 3.1 → 5.2 | 14 % → 1 % | 0 → 0 |
+| Extreme | 3.2 → 5.1 | 15 % → 1 % | 0 → 1 % |
+
+Across the full test sweep, fewer than 3 % of notes that *could* be fretted
+stay open, and over half of notes that fit in frets 5–12 are played there.
+
+**Findings:**
+
+- **Why the average doesn't go higher.** Riffs live around the low root.
+  The ♭2, ♭3 and 4th just above the open low string exist **only** on that
+  string at frets 1–4. Moving them up would mean changing octaves, which
+  would change the music. The fingering changes only where a choice exists.
+- **Low notes anchor the hand.** Right after a forced fret-1 note (the ♭2 on
+  the lowest string), the optimizer keeps the next few notes near that
+  position rather than leaping 5+ frets at speed, then shifts up. For the
+  same reason it keeps an open note in place when fretting it would force a
+  jump back down. A guitarist would finger it the same way.
+- **Higher up, when nothing is forced.** Guitar 2's harmony and octave parts
+  benefit most: in A Phrygian (seed 31) the harmony moved from open strings
+  and first-position notes to frets 5–8 on the low strings.
+- **Tuning knob.** `FINGERING` in `engine/tuning.ts` holds every cost. Raising
+  `belowZonePerFret` makes the optimizer shift up the neck more readily.
+- **Golden test.** It now hashes musical content only (no string or fret),
+  so fingering changes don't register as different riffs. It was regenerated
+  *before* the fingering change, from the Normal engine, which the previous
+  fixture had proven identical to the original.
+
+**Verified:**
+
+- 133 tests pass, 8 of them new for fingering: costs, a lone note fretted at
+  5 instead of open, a melody kept in frets 5–12, an open pedal not resetting
+  the hand, the forced open root, no big jumps, a 7-string tuning, and the
+  sweep-wide open-string and zone shares.
+- The app shows the new fingering: riff seed 31, fretted notes average fret
+  6.3, highest fret 8.
 
 ---
 

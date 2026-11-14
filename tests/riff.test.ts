@@ -125,6 +125,26 @@ describe('generateRiff', () => {
     }
   });
 
+  it('frets notes up the neck: almost no open string where a fretted position existed', () => {
+    let choosable = 0;
+    let openAnyway = 0;
+    let inZone = 0;
+    for (const r of RIFFS) {
+      for (const [, notes] of parts(r)) {
+        for (const n of notes) {
+          const fretted = r.tuning.openStrings.filter((o) => n.midi - o >= 1 && n.midi - o <= MAX_FRET).length;
+          if (fretted === 0) continue;
+          choosable++;
+          if (n.fret === 0) openAnyway++;
+          // Could this note sit in the 5–12 zone? Then count whether it does.
+          if (r.tuning.openStrings.some((o) => n.midi - o >= 5 && n.midi - o <= 12) && n.fret >= 5 && n.fret <= 12) inZone++;
+        }
+      }
+    }
+    expect(openAnyway / choosable).toBeLessThan(0.03);
+    expect(inZone / choosable).toBeGreaterThan(0.5);
+  });
+
   it('ends Guitar 1 on the root, or the b2 when the scale has one', () => {
     for (const r of RIFFS) {
       const last = r.guitar1.at(-1) as NoteEvent;
