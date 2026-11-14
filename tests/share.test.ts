@@ -11,6 +11,7 @@ const custom: Settings = {
   style: 'gallop',
   guitar2Mode: 'counter',
   complexity: 'extreme',
+  tuning: 'dropB',
   chromaticPassing: true,
   bpm: 205,
   seed: 4294967295,
@@ -68,6 +69,21 @@ describe('share links', () => {
   it('an old link with g2=unison falls back to Auto (unison no longer exists)', () => {
     expect(fromQuery('?seed=5&g2=unison', defaults).settings.guitar2Mode).toBe('auto');
     expect(GUITAR2_OPTIONS.map((o) => o.value)).toEqual(['auto', 'harmony', 'counter', 'octave', 'arpeggio']);
+  });
+
+  it('adds tun only for a chosen tuning; no tun, an unknown one, or an old link means Auto', () => {
+    expect(toQuery({ settings: custom, tempo: null })).toContain('tun=dropB');
+    expect(toQuery({ settings: { ...custom, tuning: 'auto' }, tempo: null })).not.toContain('tun=');
+    expect(fromQuery('?seed=5&tun=dropC', defaults).settings.tuning).toBe('dropC');
+    for (const q of ['?seed=5', '?seed=5&tun=banjo', '']) expect(fromQuery(q, defaults).settings.tuning).toBe('auto');
+  });
+
+  it('a link with a tuning regenerates the same riff in that tuning', () => {
+    const s: Settings = { ...defaults, key: 'E', tuning: 'dropC', seed: 31 };
+    const back = fromQuery(toQuery({ settings: s, tempo: null }), defaultSettings(1)).settings;
+    const r = generateRiff(toGenerateOptions(back));
+    expect(r.tuning.name).toBe('Drop C');
+    expect(r).toEqual(generateRiff(toGenerateOptions(s)));
   });
 
   it('carries complexity as cx', () => {

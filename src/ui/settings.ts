@@ -2,6 +2,7 @@ import { BPM_MAX, BPM_MIN, DEFAULT_BPM } from '../engine/generate.ts';
 import { romanProgression } from '../engine/harmony.ts';
 import { randomSeed } from '../engine/random.ts';
 import { SCALES, SCALE_IDS } from '../engine/theory.ts';
+import { TUNINGS, TUNING_IDS } from '../engine/tuning.ts';
 import {
   COMPLEXITIES,
   NOTE_NAMES,
@@ -12,6 +13,7 @@ import {
   type NoteName,
   type Riff,
   type ScaleId,
+  type TuningId,
   type SecondGuitarMode,
 } from '../engine/types.ts';
 
@@ -24,6 +26,8 @@ export type Settings = {
   style: Archetype | 'auto';
   guitar2Mode: SecondGuitarMode | 'auto';
   complexity: Complexity;
+  /** Guitar tuning, or 'auto' to follow the key. */
+  tuning: TuningId | 'auto';
   /** Runs may leave the scale by semitones. Off: every note stays in the chosen scale. */
   chromaticPassing: boolean;
   bpm: number;
@@ -66,6 +70,7 @@ export function defaultSettings(seed = randomSeed()): Settings {
     style: 'auto',
     guitar2Mode: 'auto',
     complexity: DEFAULT_COMPLEXITY,
+    tuning: 'auto',
     chromaticPassing: false,
     bpm: DEFAULT_BPM,
     seed,
@@ -98,6 +103,7 @@ export function toGenerateOptions(s: Settings): GenerateOptions {
     style: s.style,
     guitar2Mode: s.guitar2Mode,
     complexity: s.complexity,
+    tuning: s.tuning,
     chromaticPassing: s.chromaticPassing,
   };
 }
@@ -120,6 +126,10 @@ export const KEY_OPTIONS: Option[] = NOTE_NAMES.map((k) => ({ value: k, label: k
 export const SCALE_OPTIONS: Option[] = SCALE_IDS.map((s) => ({ value: s, label: SCALES[s].name }));
 export const STYLE_OPTIONS: Option[] = Object.entries(STYLE_LABELS).map(([value, label]) => ({ value, label }));
 export const GUITAR2_OPTIONS: Option[] = Object.entries(GUITAR2_LABELS).map(([value, label]) => ({ value, label }));
+export const TUNING_OPTIONS: Option[] = [
+  { value: 'auto', label: 'Auto (follows key)' },
+  ...TUNING_IDS.map((id) => ({ value: id, label: TUNINGS[id].name })),
+];
 export const COMPLEXITY_OPTIONS: Option[] = COMPLEXITIES.map((c) => ({ value: c, label: COMPLEXITY_LABELS[c] }));
 
 /** Narrow a string from a <select> back to a typed setting value, rejecting anything unknown. */

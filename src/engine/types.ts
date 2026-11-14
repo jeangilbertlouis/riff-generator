@@ -33,7 +33,14 @@ export type Bars = 1 | 2 | 4;
 export const COMPLEXITIES = ['simple', 'normal', 'complex', 'extreme'] as const;
 export type Complexity = (typeof COMPLEXITIES)[number];
 
+export const TUNING_IDS = [
+  'eStandard', 'ebStandard', 'dStandard', 'dropD', 'csStandard', 'dropCs', 'cStandard', 'dropC',
+  'bStandard', 'dropB', 'dropA', 'bStandard7', 'bbStandard7', 'aStandard7', 'dropA7',
+] as const;
+export type TuningId = (typeof TUNING_IDS)[number];
+
 export type Tuning = {
+  id: TuningId;
   name: string;
   /** Open-string MIDI pitches, index 0 = string 1 (highest) … last = lowest string. */
   openStrings: number[];
@@ -66,6 +73,8 @@ export type GenerateOptions = {
   guitar2Mode?: SecondGuitarMode | 'auto';
   /** Defaults to 'normal', which reproduces riffs from before complexity existed. */
   complexity?: Complexity;
+  /** Guitar tuning; 'auto' (default) follows the key. */
+  tuning?: TuningId | 'auto';
   /**
    * Let runs step by semitones, outside the scale (flagged `passing`). Default false: every
    * note stays in the chosen scale.

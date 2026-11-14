@@ -5,7 +5,7 @@ import { Rng, randomSeed } from './random.ts';
 import { chooseArchetype, generateGuitar1, makeMelodyContext } from './riff.ts';
 import { autoSecondGuitarMode, deriveGuitar2 } from './second.ts';
 import { SCALES } from './theory.ts';
-import { assignTabPositions, highestPlayable, rootMidi, tuningForKey } from './tuning.ts';
+import { TUNING_IDS, assignTabPositions, highestPlayable, rootMidi, tuningFor } from './tuning.ts';
 import { COMPLEXITIES, NOTE_NAMES, type GenerateOptions, type Riff } from './types.ts';
 
 export const BPM_MIN = 60;
@@ -30,7 +30,9 @@ export function generateRiff(options: GenerateOptions): Riff {
   const profile = PROFILES[complexity];
 
   const rng = new Rng(seed);
-  const tuning = tuningForKey(key);
+  const tuningChoice = options.tuning ?? 'auto';
+  if (tuningChoice !== 'auto' && !TUNING_IDS.includes(tuningChoice)) throw new RangeError(`Unknown tuning: ${tuningChoice}`);
+  const tuning = tuningFor(key, tuningChoice);
   const root = rootMidi(tuning, key);
 
   const archetype = !options.style || options.style === 'auto' ? chooseArchetype(bpm, rng) : options.style;
@@ -41,7 +43,9 @@ export function generateRiff(options: GenerateOptions): Riff {
 
   const requested = options.guitar2Mode ?? 'auto';
   const guitar2Mode = requested === 'auto' ? autoSecondGuitarMode(archetype, rng) : requested;
-  const g2 = deriveGuitar2(g1, guitar2Mode, { key, scale, rng, root, bars, profile, chords: progression });
+  const g2 = deriveGuitar2(g1, guitar2Mode, {
+    key, scale, rng, root, bars, profile, chords: progression, high: highestPlayable(tuning),
+  });
 
   return {
     key,

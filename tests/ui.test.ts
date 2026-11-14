@@ -6,6 +6,7 @@ import {
   MAX_SEED,
   SCALE_OPTIONS,
   STYLE_OPTIONS,
+  TUNING_OPTIONS,
   defaultSettings,
   describeRiff,
   parseBpm,
@@ -48,8 +49,17 @@ describe('settings', () => {
     const s = defaultSettings(42);
     expect(s).toEqual({
       key: 'E', scale: 'harmonicMinor', bars: 4, style: 'auto', guitar2Mode: 'auto', complexity: 'extreme',
-      chromaticPassing: false, bpm: 180, seed: 42,
+      tuning: 'auto', chromaticPassing: false, bpm: 180, seed: 42,
     });
+  });
+
+  it('passes the tuning to the engine independently of the key', () => {
+    const r = generateRiff(toGenerateOptions({ ...defaultSettings(9), key: 'A', tuning: 'dropC' }));
+    expect(r.key).toBe('A');
+    expect(r.tuning.name).toBe('Drop C');
+    expect(r.tuning.rootFret).toBe(9); // A on the low C string
+    expect(TUNING_OPTIONS[0]).toEqual({ value: 'auto', label: 'Auto (follows key)' });
+    expect(TUNING_OPTIONS).toHaveLength(16);
   });
 
   it('passes the chromatic passing toggle to the engine and names it in the summary', () => {
@@ -90,7 +100,9 @@ describe('settings', () => {
     const riff = generateRiff({ key: 'C', scale: 'phrygian', bpm: 180, bars: 1, seed: 3, style: 'chug', guitar2Mode: 'counter' });
     // C Phrygian i – ♭vii: Cm then B♭m (B♭–D♭–F)
     expect(describeRiff(riff)).toBe('Drop C · Normal chug riff · i – ♭vii · Guitar 2: counter-melody · 1 bar');
-    const complex = generateRiff({ ...riff, complexity: 'extreme', style: 'tremolo', guitar2Mode: 'harmony' });
+    const complex = generateRiff({
+      key: 'C', scale: 'phrygian', bpm: 180, bars: 1, seed: 3, complexity: 'extreme', style: 'tremolo', guitar2Mode: 'harmony',
+    });
     expect(describeRiff(complex)).toBe('Drop C · Extreme tremolo riff · i – ♭vii · Guitar 2: harmony · 1 bar');
   });
 });

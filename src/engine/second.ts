@@ -14,6 +14,8 @@ export type SecondGuitarContext = {
   profile?: ComplexityProfile;
   /** The riff's chord progression; without it, the part works against the tonic only. */
   chords?: ChordSlot[];
+  /** Highest playable pitch (top string, fret 22); parts must stay at or below it. */
+  high?: number;
 };
 
 /** Auto's choice per style, as weights. Never unison: Guitar 2 always plays its own part. */
@@ -32,7 +34,12 @@ export function autoSecondGuitarMode(archetype: Archetype, rng: Rng): SecondGuit
 export function deriveGuitar2(g1: RawNote[], mode: SecondGuitarMode, ctx: SecondGuitarContext): RawNote[] {
   switch (mode) {
     case 'octave':
-      return g1.map((n) => ({ ...n, midi: n.midi + 12 }));
+      return g1.map((n) => {
+        // In a low tuning with a high root, an octave up can pass fret 22: play a diatonic 3rd there instead.
+        if (ctx.high === undefined || n.midi + 12 <= ctx.high) return { ...n, midi: n.midi + 12 };
+        const third = isInScale(n.midi, ctx.key, ctx.scale) ? shiftByScaleSteps(n.midi, 2, ctx.key, ctx.scale) : n.midi + 3;
+        return { ...n, midi: third, passing: !isInScale(third, ctx.key, ctx.scale) };
+      });
     case 'harmony':
       return harmonize(g1, ctx);
     case 'counter':

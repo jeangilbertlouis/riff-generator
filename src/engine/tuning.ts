@@ -1,5 +1,7 @@
 import { pc, pitchClassOf } from './theory.ts';
-import type { NoteName, Tuning } from './types.ts';
+import { TUNING_IDS, type NoteName, type Tuning, type TuningId } from './types.ts';
+
+export { TUNING_IDS, type TuningId };
 
 export const MAX_FRET = 22;
 
@@ -9,28 +11,59 @@ const shift = (strings: number[], semis: number) => strings.map((s) => s + semis
 const drop = (strings: number[]) => [...strings.slice(0, -1), (strings.at(-1) as number) - 2];
 const SEVEN_B_STANDARD = [...E_STANDARD, 35];
 
-/**
- * Tuning follows the key: the root is the open lowest string where an idiomatic
- * tuning exists. F–G# stay in E standard with the root fretted on the low string.
- */
-const TUNINGS: Record<NoteName, Tuning> = {
-  E: { name: 'E standard', openStrings: E_STANDARD, rootFret: 0 },
-  'D#': { name: 'Eb standard', openStrings: shift(E_STANDARD, -1), rootFret: 0 },
-  D: { name: 'Drop D', openStrings: drop(E_STANDARD), rootFret: 0 },
-  'C#': { name: 'C# standard', openStrings: shift(E_STANDARD, -3), rootFret: 0 },
-  C: { name: 'Drop C', openStrings: drop(shift(E_STANDARD, -2)), rootFret: 0 },
-  B: { name: 'B standard (7-string)', openStrings: SEVEN_B_STANDARD, rootFret: 0 },
-  'A#': { name: 'Bb standard (7-string)', openStrings: shift(SEVEN_B_STANDARD, -1), rootFret: 0 },
-  A: { name: 'Drop A (7-string)', openStrings: drop(SEVEN_B_STANDARD), rootFret: 0 },
-  F: { name: 'E standard', openStrings: E_STANDARD, rootFret: 1 },
-  'F#': { name: 'E standard', openStrings: E_STANDARD, rootFret: 2 },
-  G: { name: 'E standard', openStrings: E_STANDARD, rootFret: 3 },
-  'G#': { name: 'E standard', openStrings: E_STANDARD, rootFret: 4 },
+/** The tunings you can pick (independent of the key). */
+export const TUNINGS: Record<TuningId, { name: string; openStrings: number[] }> = {
+  eStandard: { name: 'E standard', openStrings: E_STANDARD },
+  ebStandard: { name: 'Eb standard', openStrings: shift(E_STANDARD, -1) },
+  dStandard: { name: 'D standard', openStrings: shift(E_STANDARD, -2) },
+  dropD: { name: 'Drop D', openStrings: drop(E_STANDARD) },
+  csStandard: { name: 'C# standard', openStrings: shift(E_STANDARD, -3) },
+  dropCs: { name: 'Drop C#', openStrings: drop(shift(E_STANDARD, -1)) },
+  cStandard: { name: 'C standard', openStrings: shift(E_STANDARD, -4) },
+  dropC: { name: 'Drop C', openStrings: drop(shift(E_STANDARD, -2)) },
+  bStandard: { name: 'B standard', openStrings: shift(E_STANDARD, -5) },
+  dropB: { name: 'Drop B', openStrings: drop(shift(E_STANDARD, -3)) },
+  dropA: { name: 'Drop A', openStrings: drop(shift(E_STANDARD, -5)) },
+  bStandard7: { name: 'B standard (7-string)', openStrings: SEVEN_B_STANDARD },
+  bbStandard7: { name: 'Bb standard (7-string)', openStrings: shift(SEVEN_B_STANDARD, -1) },
+  aStandard7: { name: 'A standard (7-string)', openStrings: shift(SEVEN_B_STANDARD, -2) },
+  dropA7: { name: 'Drop A (7-string)', openStrings: drop(SEVEN_B_STANDARD) },
 };
 
+/**
+ * "Auto": the tuning follows the key, with the root on the open lowest string where an
+ * idiomatic tuning exists. F–G# stay in E standard with the root fretted on the low string.
+ */
+const AUTO: Record<NoteName, TuningId> = {
+  E: 'eStandard',
+  'D#': 'ebStandard',
+  D: 'dropD',
+  'C#': 'csStandard',
+  C: 'dropC',
+  B: 'bStandard7',
+  'A#': 'bbStandard7',
+  A: 'dropA7',
+  F: 'eStandard',
+  'F#': 'eStandard',
+  G: 'eStandard',
+  'G#': 'eStandard',
+};
+
+/** A tuning for a key: the chosen one, or the key's Auto tuning. The root is placed per `rootFretFor`. */
+export function tuningFor(key: NoteName, choice: TuningId | 'auto' = 'auto'): Tuning {
+  const id = choice === 'auto' ? AUTO[key] : choice;
+  const t = TUNINGS[id];
+  return { id, name: t.name, openStrings: [...t.openStrings], rootFret: rootFretFor(t.openStrings, key) };
+}
+
+/** The key's Auto tuning (kept for callers that only know the key). */
 export function tuningForKey(key: NoteName): Tuning {
-  const t = TUNINGS[key];
-  return { ...t, openStrings: [...t.openStrings] };
+  return tuningFor(key, 'auto');
+}
+
+/** Fret of the key's root on the lowest string: the lowest root at or above the open string (0–11). */
+export function rootFretFor(openStrings: number[], key: NoteName): number {
+  return pc(pitchClassOf(key) - (openStrings.at(-1) as number));
 }
 
 export function lowestString(t: Tuning): number {

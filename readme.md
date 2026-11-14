@@ -1469,6 +1469,94 @@ play, regenerating and stopping raised no errors.
   build ran alongside it. A restart fixed it; the app code was not involved.
 - **Not verified:** how it sounds. That needs your ears.
 
+### 6.14 Key and tuning chosen independently
+
+**Request:** choose the key and the guitar tuning separately. Until now the
+tuning followed the key (§4.3).
+
+**Plan:**
+
+- **A Tuning dropdown next to Key**, defaulting to **Auto (follows the
+  key)**. Auto is exactly today's behaviour, so existing riffs, links and
+  the golden test are unchanged.
+- **The tunings offered** (`TUNINGS` in `engine/tuning.ts`):
+
+  | Strings | Tunings |
+  |---------|---------|
+  | 6 | E standard, E♭ standard, D standard, Drop D, C♯ standard, Drop C♯, C standard, Drop C, B standard, Drop B, Drop A |
+  | 7 | B standard, B♭ standard, A standard, Drop A |
+
+- **Where the root goes in any tuning:** the **lowest pitch of the key at or
+  above the lowest open string**, at fret 0–11 on the lowest string.
+  - E standard in A: the root is A2 (low E string, fret 5, or the open A).
+  - Drop C in E: E2 on the low C string, fret 4.
+
+  Everything that follows from the root (the pedal following the chords,
+  the melody range, Guitar 2's register, the fingering) works unchanged.
+  Auto tunings are the cases where that fret is 0 (or 1–4 for F–G♯, as
+  before).
+- **Staying playable:** a root up to 11 frets above the open string pushes
+  the top of the range up.
+  - **Guitar 1's range** was already capped at the highest playable note
+    (fret 22 on the top string).
+  - **Guitar 2's Octave mode** could go past it, for example in the highest
+    keys of a low tuning with a two-octave Extreme melody. Notes that would
+    pass fret 22 play a diatonic third above Guitar 1 instead (not unison).
+- **Share links** add `tun=<id>` only when a tuning is chosen. Links without
+  it, including old ones, use Auto.
+- **The summary** already starts with the tuning name, for example
+  "Drop C · …".
+
+**Tests:**
+
+- The tuning catalogue: names, 6 or 7 strings, strings ordered from high to
+  low, unique ids.
+- The root rule, with examples.
+- **Every key × every tuning** at every complexity and Guitar 2 mode
+  produces playable tab (frets 0–22), stays in the scale, and roots the
+  pedal correctly.
+- Auto still equals the old key-to-tuning map (the golden test passes
+  unchanged).
+- Share links round-trip `tun`; invalid values and old links fall back to
+  Auto.
+
+**Findings while building it:**
+
+- **The octave guard really is needed.** On a 6-string with a low top
+  string and a high root, for example B standard in A♯ (top string B3,
+  fret 22 = A5), an Extreme melody an octave up passes fret 22. The test
+  sweeps every tuning × key in Octave mode and requires the guard to fire at
+  least once. Where it does, Guitar 2 plays a diatonic third instead (3 or 4
+  semitones above), never unison.
+- **A riff is not a set of options.** One test built options by spreading a
+  riff, and a riff's `tuning` is now a tuning *object*, which collides with
+  the new `tuning` option. The test now passes explicit options.
+
+**Verified:**
+
+- **212 tests pass. New ones cover:**
+  - the 15-tuning catalogue (exact strings for Drop C, Drop D, B standard,
+    Drop A and Drop A 7-string);
+  - the root rule;
+  - Auto matching the old map for all 12 keys;
+  - unknown tunings being rejected;
+  - **all 720 combinations of key × tuning × level**: playable tab (frets
+    0–22, each matching its pitch), in the scale, with the pedal on the
+    chord roots;
+  - the octave guard;
+  - `tun` in share links;
+  - the tuning reaching the engine independently of the key.
+  - The golden test is unchanged, so Auto is unchanged.
+- **In the browser:**
+  - The Tuning dropdown (Auto plus 15 tunings) sits next to Key.
+  - E in Drop C: the summary says "Drop C", the tab's strings read
+    d A F C G C, and the link gains `tun=dropC`.
+  - Changing the key to A keeps Drop C, with the pedal at fret 9 on the low
+    C string.
+  - Back to Auto: A follows the key to Drop A (7-string), and `tun` leaves
+    the link.
+  - No sideways page scroll.
+
 ---
 
 ## 7. Decisions
@@ -1479,7 +1567,7 @@ play, regenerating and stopping raised no errors.
 | Q2 | Which two instruments? | **Two guitars** (G1 riff, G2 derived: unison / harmony / counter / octave) |
 | Q3 | Guitar sound | **Synthesized first**, swappable for samples later |
 | Q4 | Tab only, or tab plus standard notation? | **Tab only** (custom SVG) |
-| Q5 | Tuning | **Follows the key** (root = open low string) |
+| Q5 | Tuning | **Follows the key** (root = open low string); since §6.14 chosen independently, with Auto as the default |
 | Q6 | MIDI / audio export | **MIDI export later**, as a polish item; no audio export |
 | Q7 | Default Guitar 2 mode | **Auto**: the archetype picks; never unison (§6.9) |
 | Q8 | Count-in | **Off by default** (was on; changed in §6.11) |

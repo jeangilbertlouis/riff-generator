@@ -5,6 +5,7 @@ import { generateRiff } from '../engine/generate.ts';
 import { randomSeed } from '../engine/random.ts';
 import { COMPLEXITIES, NOTE_NAMES, type Archetype, type Bars, type Riff, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
 import { SCALE_IDS } from '../engine/theory.ts';
+import { TUNING_IDS } from '../engine/tuning.ts';
 import { midiFileName, riffToMidi } from '../export/midi.ts';
 import { TabView } from '../tab/TabView.ts';
 import { fromQuery, toQuery } from './share.ts';
@@ -12,6 +13,7 @@ import { focusInfo, shortcutFor } from './shortcuts.ts';
 import {
   BARS_OPTIONS,
   COMPLEXITY_OPTIONS,
+  TUNING_OPTIONS,
   GUITAR2_LABELS,
   GUITAR2_OPTIONS,
   KEY_OPTIONS,
@@ -54,6 +56,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     style: el<HTMLSelectElement>(root, '#style'),
     guitar2: el<HTMLSelectElement>(root, '#guitar2'),
     complexity: el<HTMLSelectElement>(root, '#complexity'),
+    tuning: el<HTMLSelectElement>(root, '#tuning'),
     chromatic: el<HTMLInputElement>(root, '#chromatic'),
     bpmRange: el<HTMLInputElement>(root, '#bpm-range'),
     bpmNumber: el<HTMLInputElement>(root, '#bpm-number'),
@@ -86,6 +89,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   fillSelect(ui.style, STYLE_OPTIONS, settings.style);
   fillSelect(ui.guitar2, GUITAR2_OPTIONS, settings.guitar2Mode);
   fillSelect(ui.complexity, COMPLEXITY_OPTIONS, settings.complexity);
+  fillSelect(ui.tuning, TUNING_OPTIONS, settings.tuning);
   ui.chromatic.checked = settings.chromaticPassing;
   showBpm(settings.bpm);
   ui.seed.value = String(settings.seed);
@@ -145,6 +149,10 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   ui.guitar2.addEventListener('change', () => {
     settings.guitar2Mode =
       pickOption(ui.guitar2.value, Object.keys(GUITAR2_LABELS) as (SecondGuitarMode | 'auto')[]) ?? settings.guitar2Mode;
+    regenerate();
+  });
+  ui.tuning.addEventListener('change', () => {
+    settings.tuning = ui.tuning.value === 'auto' ? 'auto' : (pickOption(ui.tuning.value, TUNING_IDS) ?? settings.tuning);
     regenerate();
   });
   ui.complexity.addEventListener('change', () => {
@@ -296,7 +304,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
 
   // A dropdown picked with the mouse hands focus back to the page, so G/L work right after.
   // One reached with the keyboard keeps focus, so keyboard users can keep typing to choose.
-  for (const select of [ui.key, ui.scale, ui.bars, ui.style, ui.guitar2, ui.complexity]) {
+  for (const select of [ui.key, ui.tuning, ui.scale, ui.bars, ui.style, ui.guitar2, ui.complexity]) {
     let byPointer = false;
     select.addEventListener('pointerdown', () => (byPointer = true));
     select.addEventListener('keydown', () => (byPointer = false));
