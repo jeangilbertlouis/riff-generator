@@ -170,26 +170,26 @@ const ARP_PATTERNS: Record<ArpRhythm, { tones: number[]; duration: number }> = {
 
 /**
  * Guitar 2 arpeggiates the progression an octave or more above Guitar 1's pedal: each chord
- * restarts the pattern from its root. The first half is generated and repeated, like the riff.
+ * restarts the pattern from its root. It follows the chords across the whole riff (when both
+ * halves have the same chords, the second half comes out identical to the first).
  */
 function arpeggioPart(ctx: SecondGuitarContext): RawNote[] {
   const profile = ctx.profile ?? PROFILES.normal;
   const pattern = ARP_PATTERNS[ctx.rng.pick(profile.arpRhythms)];
   const pool = scaleNotesInRange(ctx.key, ctx.scale, ctx.root + 12, ctx.root + 24);
   const total = ctx.bars * 16;
-  const half = total / 2;
   const chords = ctx.chords && ctx.chords.length > 0 ? ctx.chords : null;
   const slots = chords
-    ? chords.filter((s) => s.step < half)
-    : [{ step: 0, length: half, rootPc: pc(ctx.root), tones: [pc(ctx.root), pc(ctx.root + 3), pc(ctx.root + 7)] }];
+    ? chords
+    : [{ step: 0, length: total, rootPc: pc(ctx.root), tones: [pc(ctx.root), pc(ctx.root + 3), pc(ctx.root + 7)] }];
 
-  const first: RawNote[] = [];
+  const notes: RawNote[] = [];
   for (const slot of slots) {
     const ladder = chordLadder(pool, slot as ChordSlot);
     const base = ladder.find((n) => pc(n) === slot.rootPc) ?? ladder[0] ?? ctx.root + 12;
     let k = 0;
-    for (let s = slot.step; s < Math.min(slot.step + slot.length, half); s += pattern.duration, k++) {
-      first.push({
+    for (let s = slot.step; s < Math.min(slot.step + slot.length, total); s += pattern.duration, k++) {
+      notes.push({
         step: s,
         duration: Math.min(pattern.duration, slot.step + slot.length - s),
         midi: arpeggioNote(ladder, base, pattern.tones[k % pattern.tones.length] as number),
@@ -200,5 +200,5 @@ function arpeggioPart(ctx: SecondGuitarContext): RawNote[] {
       });
     }
   }
-  return [...first, ...first.map((n) => ({ ...n, step: n.step + half }))];
+  return notes;
 }

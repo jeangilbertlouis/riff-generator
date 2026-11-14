@@ -30,6 +30,10 @@ export type ChordSlot = {
 
 export type Bars = 1 | 2 | 4;
 
+/** How the chords move: steady, one chord twice as long, or the riff repeated over a new chord. */
+export const CHORD_CHANGES = ['steady', 'longer', 'repeat'] as const;
+export type ChordChanges = (typeof CHORD_CHANGES)[number];
+
 export const COMPLEXITIES = ['simple', 'normal', 'complex', 'extreme'] as const;
 export type Complexity = (typeof COMPLEXITIES)[number];
 
@@ -75,6 +79,8 @@ export type GenerateOptions = {
   complexity?: Complexity;
   /** Guitar tuning; 'auto' (default) follows the key. */
   tuning?: TuningId | 'auto';
+  /** How the chords move. Defaults to 'steady' (the original behaviour); 'auto' picks per riff. */
+  chordChanges?: ChordChanges | 'auto';
   /**
    * Let runs step by semitones, outside the scale (flagged `passing`). Default false: every
    * note stays in the chosen scale.
@@ -94,8 +100,9 @@ export type Riff = {
   archetype: Archetype;
   complexity: Complexity;
   chromaticPassing: boolean;
-  /** The chord progression under the riff: one half's chords, repeated in the second half. */
+  /** The chord progression under the whole riff (see chordChanges). */
   progression: ChordSlot[];
+  chordChanges: ChordChanges;
   /** A simple drum beat for playback, derived from the style and Guitar 1 (see drums.ts). */
   drums: { step: number; piece: 'kick' | 'snare' | 'hat' | 'crash'; accent: boolean }[];
   tuning: Tuning;

@@ -1557,6 +1557,116 @@ tuning followed the key (§4.3).
     the link.
   - No sideways page scroll.
 
+### 6.15 Chord changes: longer chords and repeats over a new chord
+
+**Feedback:**
+
+- The chord always changes at the same point.
+- Sometimes a chord should last twice as long.
+- Sometimes the riff should repeat over a different backing chord.
+- Both should be selectable in a dropdown.
+
+**Decisions (agreed):**
+
+- **On a repeat over a new chord, Guitar 1 keeps the same notes**, and only
+  the pedal and the backing chord change underneath. That's a
+  reharmonization, not a transposition.
+- **The dropdown defaults to Auto.**
+
+**The "Chord changes" dropdown:**
+
+| Option | Chords over the riff |
+|--------|----------------------|
+| **Steady** | Today's behaviour: equal chord lengths, and the second half (A′) has the same chords as A |
+| **Longer chords** | Three chords where one lasts **twice as long** as the other two, for example 8 + 4 + 4 steps in 1 bar, or a whole bar then two half bars in 2 bars. Where the long chord sits varies (first, middle or last) |
+| **Repeat on new chord** | A has its chord(s); A′ repeats the riff over a **different chord**. In 1- and 2-bar riffs that is one chord per half (for example Em, then F); in 4-bar riffs two chords per half, each moved by the same scale step |
+| **Auto** (default) | Each riff picks one: 40 % Steady, 30 % Longer, 30 % Repeat (Simple 50/25/25) |
+
+**How it works:**
+
+- **The chord timeline now covers the whole riff,** not just one half that
+  repeats, so A′ can have different chords from A.
+- **Guitar 1's A′ copies A's notes (as before),** but every **pedal note**
+  (the palm-muted chug, or a note held from it) is re-rooted to the chord
+  now underneath. Melody notes stay exactly as they were. The A′ variation
+  is generated fresh over its own chords, as before.
+- **Guitar 2:**
+  - Harmony and Octave follow Guitar 1.
+  - The Counter-melody repeats its notes, like Guitar 1.
+  - The **Arpeggio** part is generated chord by chord across the whole
+    riff, instead of being copied, so it always arpeggiates the chord
+    actually sounding.
+- **The drums** follow Guitar 1's rhythm, so they are unchanged.
+- **Separate randomness for the Auto choice:** Auto picks its option from its
+  own random stream, derived from the seed. When it picks Steady, the riff is
+  identical to before.
+- **Old links** (a valid seed but no `chg`) open as **Steady**, so they still
+  play exactly the riff they were made with. New links carry `chg`.
+- **The summary** shows both halves when they differ, for example
+  "i | ♭II" or "i | ♭VI – ♭II".
+- **The chord names above the tab** already appear wherever a chord starts,
+  at any length.
+
+**Tests:**
+
+- **Each option:**
+  - the timeline covers the riff without gaps;
+  - Steady has equal lengths and identical halves;
+  - Longer has three chords, one exactly twice as long as the others;
+  - Repeat gives the halves different chords on the same rhythm.
+- **Pedal and melody on the repeat:** every palm-muted pedal is the chord
+  root (across all options), and A′'s copied melody notes equal A's.
+- **Auto:** picking Steady reproduces the explicit Steady riff exactly; old
+  links open as Steady.
+- **Guitar 2:** the Arpeggio part plays only tones of the chord sounding.
+- **Golden test:** unchanged (see the findings below).
+
+**Findings while building it:**
+
+- **The golden test didn't need regenerating.** The *engine's* default is
+  Steady (like Normal for complexity); only the UI defaults to Auto. The
+  golden test, which uses engine defaults, still passed after the whole
+  refactor:
+  - the timeline now covering the whole riff;
+  - pedal tracking;
+  - the Arpeggio part generated chord by chord instead of copied.
+
+  That proves Steady riffs are bit-for-bit unchanged.
+- **Pedal notes aren't always palm-muted.** At Simple, a melody note
+  sometimes falls back to the pedal root (the pedal-tone weighting), without
+  palm mute. Those notes are re-rooted on a repeat too, which is correct. A
+  test that recognized pedals only by palm mute flagged them, so it now
+  recognizes a pedal as a note on the chord root in both halves.
+- **Two existing tests assumed the halves always match:** A′ repeating A,
+  and the Arpeggio part repeating per half. They now allow a difference
+  only where the chord underneath changed, and only as the new chord's
+  root. The main invariant sweep (scale, monophonic, playable, endings)
+  now also runs with Auto chord changes.
+
+**Verified:**
+
+- **222 tests pass. New ones cover:**
+  - each option's timeline: Steady has equal lengths and identical halves;
+    Longer has three chords, one exactly twice as long, in all three
+    positions; Repeat keeps the same rhythm with a different chord;
+  - the repeat keeping Guitar 1's melody notes exactly, with more than 50
+    pedals moving to the new chord's root;
+  - Auto using all three options, and Auto-Steady equalling an explicit
+    Steady riff;
+  - unknown values being rejected;
+  - the Arpeggio part following the sounding chord;
+  - `chg` links: old links open as Steady, and Auto links reproduce the
+    same riff;
+  - the dropdown labels and the summary with "|".
+- **In the browser:**
+  - the dropdown offers Auto, Steady, Longer chords and Repeat on new chord;
+  - Repeat shows Em … C above the tab and "i | ♭VI" in the summary;
+  - Longer shows Em C B;
+  - Steady shows Em B Em B;
+  - the link carries `chg`;
+  - playback, including switching option mid-play, raised no errors;
+  - the settings sit in two rows of four.
+
 ---
 
 ## 7. Decisions

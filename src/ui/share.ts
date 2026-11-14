@@ -1,5 +1,5 @@
 import { TUNING_IDS } from '../engine/tuning.ts';
-import { COMPLEXITIES, NOTE_NAMES, type Archetype, type Bars, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
+import { CHORD_CHANGES, COMPLEXITIES, NOTE_NAMES, type Archetype, type Bars, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
 import { SCALE_IDS } from '../engine/theory.ts';
 import { GUITAR2_LABELS, STYLE_LABELS, parseBpm, parseSeed, pickOption, type Settings } from './settings.ts';
 
@@ -21,6 +21,7 @@ export function toQuery({ settings: s, tempo }: ShareState): string {
     seed: String(s.seed),
   });
   if (s.tuning !== 'auto') params.set('tun', s.tuning);
+  params.set('chg', s.chordChanges);
   if (s.chromaticPassing) params.set('chr', '1');
   if (tempo !== null && tempo !== s.bpm) params.set('tempo', String(tempo));
   return `?${params.toString()}`;
@@ -43,6 +44,11 @@ export function fromQuery(query: string, defaults: Settings): ShareState {
     // so they open at Normal and still play the same riff.
     // No `tun` (or an unknown one, or an old link): Auto, which follows the key as before.
     tuning: pickOption(get('tun'), TUNING_IDS) ?? 'auto',
+    // Links from before this option carry a seed but no `chg`: they were Steady, so they open as Steady.
+    chordChanges:
+      get('chg') === 'auto'
+        ? 'auto'
+        : (pickOption(get('chg'), CHORD_CHANGES) ?? (parseSeed(get('seed')) !== null ? 'steady' : defaults.chordChanges)),
     complexity: pickOption(get('cx'), COMPLEXITIES) ?? (parseSeed(get('seed')) !== null ? 'normal' : defaults.complexity),
     // Only `chr=1` turns chromatic passing on; links without it (including old ones) stay in the scale.
     chromaticPassing: get('chr') === '1',

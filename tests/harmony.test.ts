@@ -84,6 +84,103 @@ describe('progressions', () => {
   });
 });
 
+describe('chord changes', () => {
+  const opts = (seed: number, bars: Bars, chordChanges: 'steady' | 'longer' | 'repeat' | 'auto', complexity: Complexity = 'normal') =>
+    ({ key: 'E' as const, scale: 'phrygian' as const, bpm: 180, bars, seed, complexity, chordChanges });
+
+  it('every option covers the riff without gaps, starting on the tonic', () => {
+    for (const changes of ['steady', 'longer', 'repeat'] as const) {
+      for (const bars of [1, 2, 4] as Bars[]) {
+        for (let seed = 0; seed < 15; seed++) {
+          const r = generateRiff(opts(seed, bars, changes));
+          expect(r.chordChanges).toBe(changes);
+          let next = 0;
+          for (const s of r.progression) {
+            expect(s.step).toBe(next);
+            expect(s.length % 4).toBe(0);
+            next += s.length;
+          }
+          expect(next).toBe(r.totalSteps);
+          expect(r.progression[0]!.degree).toBe(0);
+        }
+      }
+    }
+  });
+
+  it('longer: three chords, one exactly twice as long as the other two, in varying places', () => {
+    const longPositions = new Set<number>();
+    for (const bars of [1, 2, 4] as Bars[]) {
+      for (let seed = 0; seed < 30; seed++) {
+        const lengths = generateRiff(opts(seed, bars, 'longer')).progression.map((s) => s.length);
+        expect(lengths).toHaveLength(3);
+        const short = Math.min(...lengths);
+        expect([...lengths].sort((a, b) => a - b)).toEqual([short, short, short * 2]);
+        longPositions.add(lengths.indexOf(short * 2));
+      }
+    }
+    expect(longPositions).toEqual(new Set([0, 1, 2]));
+  });
+
+  it('repeat: A′ has the same chord rhythm as A but different chords', () => {
+    for (const bars of [1, 2, 4] as Bars[]) {
+      for (let seed = 0; seed < 30; seed++) {
+        const r = generateRiff(opts(seed, bars, 'repeat'));
+        const half = r.totalSteps / 2;
+        const a = r.progression.filter((s) => s.step < half);
+        const b = r.progression.filter((s) => s.step >= half);
+        expect(b.map((s) => s.length)).toEqual(a.map((s) => s.length));
+        expect(b[0]!.roman).not.toBe(a[0]!.roman);
+        expect(romanProgression(r.progression)).toContain(' | ');
+      }
+    }
+  });
+
+  it("repeat: Guitar 1's repeated notes are A's notes, except pedals, which move to the new chord's root", () => {
+    let pedalsMoved = 0;
+    for (let seed = 0; seed < 40; seed++) {
+      const r = generateRiff({ ...opts(seed, 2, 'repeat'), style: 'chug' });
+      const half = r.totalSteps / 2;
+      const headLen = half - 8; // Normal, 2 bars: the last 8 steps of A′ are new material
+      const a = r.guitar1.filter((n) => n.step < headLen);
+      const b = r.guitar1.filter((n) => n.step >= half && n.step < half + headLen);
+      expect(b.map((n) => n.step - half)).toEqual(a.map((n) => n.step));
+      b.forEach((n, i) => {
+        if (n.palmMute) {
+          expect(pc(n.midi)).toBe(chordAt(r.progression, n.step).rootPc);
+          if (n.midi !== a[i]!.midi) pedalsMoved++;
+        } else {
+          expect(n.midi).toBe(a[i]!.midi); // melody notes stay exactly as they were
+        }
+      });
+    }
+    expect(pedalsMoved).toBeGreaterThan(50);
+  });
+
+  it('Auto picks all three, and picking Steady reproduces the explicit Steady riff exactly', () => {
+    const seen = new Set<string>();
+    for (let seed = 0; seed < 60; seed++) {
+      const auto = generateRiff(opts(seed, 2, 'auto', 'extreme'));
+      seen.add(auto.chordChanges);
+      if (auto.chordChanges === 'steady') expect(auto).toEqual(generateRiff(opts(seed, 2, 'steady', 'extreme')));
+    }
+    expect(seen).toEqual(new Set(['steady', 'longer', 'repeat']));
+  });
+
+  it('the engine defaults to Steady and rejects unknown values', () => {
+    expect(generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, seed: 1 }).chordChanges).toBe('steady');
+    expect(() => generateRiff({ ...opts(1, 2, 'steady'), chordChanges: 'jazz' as 'steady' })).toThrow(RangeError);
+  });
+
+  it('Guitar 2 arpeggios follow the chord actually sounding, whatever the chord changes', () => {
+    for (const changes of ['longer', 'repeat'] as const) {
+      for (let seed = 0; seed < 20; seed++) {
+        const r = generateRiff({ ...opts(seed, 4, changes), guitar2Mode: 'arpeggio' });
+        for (const n of r.guitar2) expect(chordAt(r.progression, n.step).tones).toContain(pc(n.midi));
+      }
+    }
+  });
+});
+
 describe('the riff follows the chords', () => {
   const riffs: Riff[] = [];
   let seed = 3;

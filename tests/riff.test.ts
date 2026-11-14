@@ -30,7 +30,7 @@ function sweep(): Riff[] {
           const mode = seed % 5 === 0 ? 'auto' : (MODES[seed % MODES.length] as SecondGuitarMode);
           const bpm = 60 + ((seed * 37) % 200);
           riffs.push(generateRiff({ key, scale, bpm, bars, seed, style, guitar2Mode: mode, complexity }));
-          riffs.push(generateRiff({ key, scale, bpm: 180, bars, seed: seed * 7919, complexity }));
+          riffs.push(generateRiff({ key, scale, bpm: 180, bars, seed: seed * 7919, complexity, chordChanges: 'auto' }));
           seed++;
         }
       }
@@ -154,16 +154,23 @@ describe('generateRiff', () => {
     }
   });
 
-  it('repeats phrase A in A′ up to the variation', () => {
+  it('repeats phrase A in A′ up to the variation (pedals follow the chord when it differs)', () => {
     for (const r of RIFFS) {
       const half = r.totalSteps / 2;
       const headLen = half - variationLength(r.bars, r.complexity);
-      const strip = ({ step, duration, midi, palmMute, accent }: NoteEvent) => ({ step, duration, midi, palmMute, accent });
-      const a = r.guitar1.filter((n) => n.step < headLen).map(strip);
-      const aPrime = r.guitar1
-        .filter((n) => n.step >= half && n.step < half + headLen)
-        .map((n) => strip({ ...n, step: n.step - half }));
-      expect(aPrime).toEqual(a);
+      // Rhythm and articulation always repeat. Pitches repeat too, except pedal notes (the chord's root,
+      // muted or not) over a different chord: those land on the new chord's root.
+      const rootAt = (step: number) => chordAt(r.progression, step).rootPc;
+      const a = r.guitar1.filter((n) => n.step < headLen);
+      const aPrime = r.guitar1.filter((n) => n.step >= half && n.step < half + headLen);
+      const rhythm = (n: NoteEvent, offset: number) => [n.step - offset, n.duration, n.palmMute, n.accent];
+      expect(aPrime.map((n) => rhythm(n, half))).toEqual(a.map((n) => rhythm(n, 0)));
+      aPrime.forEach((n, i) => {
+        const original = a[i]!;
+        if (n.midi === original.midi) return;
+        expect(pc(original.midi)).toBe(rootAt(original.step)); // was a pedal on A's chord
+        expect(pc(n.midi)).toBe(rootAt(n.step)); // now the pedal on A′'s chord
+      });
     }
   });
 });
@@ -226,7 +233,7 @@ describe('Guitar 2 modes', () => {
     }
   });
 
-  it('arpeggio mode plays only tones of the chord under each note, an octave or more up, repeating per half', () => {
+  it('arpeggio mode plays only tones of the chord under each note, an octave or more up, repeating when the chords repeat', () => {
     expect(of('arpeggio').length).toBeGreaterThan(10);
     for (const r of of('arpeggio')) {
       const root = rootMidi(r.tuning, r.key);
@@ -235,6 +242,7 @@ describe('Guitar 2 modes', () => {
         expect(n.midi).toBeGreaterThanOrEqual(root + 12);
         expect(n.midi).toBeLessThanOrEqual(root + 24);
       }
+      if (r.chordChanges !== 'steady') continue;
       const half = r.totalSteps / 2;
       const a = r.guitar2.filter((n) => n.step < half).map((n) => [n.step, n.midi]);
       const b = r.guitar2.filter((n) => n.step >= half).map((n) => [n.step - half, n.midi]);

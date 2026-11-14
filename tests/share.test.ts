@@ -12,6 +12,7 @@ const custom: Settings = {
   guitar2Mode: 'counter',
   complexity: 'extreme',
   tuning: 'dropB',
+  chordChanges: 'repeat',
   chromaticPassing: true,
   bpm: 205,
   seed: 4294967295,
@@ -84,6 +85,23 @@ describe('share links', () => {
     const r = generateRiff(toGenerateOptions(back));
     expect(r.tuning.name).toBe('Drop C');
     expect(r).toEqual(generateRiff(toGenerateOptions(s)));
+  });
+
+  it('carries chord changes as chg; an old link (a seed, no chg) opens as Steady, so it plays the same riff', () => {
+    expect(toQuery({ settings: custom, tempo: null })).toContain('chg=repeat');
+    expect(fromQuery('?seed=5&chg=longer', defaults).settings.chordChanges).toBe('longer');
+    expect(fromQuery('?seed=5&chg=auto', defaults).settings.chordChanges).toBe('auto');
+    expect(fromQuery('?key=E&scale=phrygian&bars=2&style=auto&g2=auto&bpm=180&seed=777', defaults).settings.chordChanges).toBe('steady');
+    expect(fromQuery('?seed=5&chg=jazz', defaults).settings.chordChanges).toBe('steady');
+    expect(fromQuery('', defaults).settings.chordChanges).toBe('auto');
+  });
+
+  it('a link with Auto chord changes reproduces the same riff', () => {
+    for (let seed = 0; seed < 10; seed++) {
+      const s: Settings = { ...defaults, seed, chordChanges: 'auto' };
+      const back = fromQuery(toQuery({ settings: s, tempo: null }), defaultSettings(1)).settings;
+      expect(generateRiff(toGenerateOptions(back))).toEqual(generateRiff(toGenerateOptions(s)));
+    }
   });
 
   it('carries complexity as cx', () => {

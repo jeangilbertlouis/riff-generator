@@ -5,8 +5,11 @@ import type { Rng } from './random.ts';
 import { degreeOf, isInScale, pc, scaleNotesInRange } from './theory.ts';
 import type { Archetype, Bars, Complexity, NoteEvent, NoteName, ScaleId } from './types.ts';
 
-/** A note before it has a tab position. */
-export type RawNote = Omit<NoteEvent, 'string' | 'fret'>;
+/**
+ * A note before it has a tab position. `pedal` marks pedal notes (the chord root, or a note held
+ * from it): when A′ repeats A over a different chord, those follow the new chord.
+ */
+export type RawNote = Omit<NoteEvent, 'string' | 'fret'> & { pedal?: boolean };
 
 export type MelodyContext = {
   key: NoteName;
@@ -33,6 +36,8 @@ type MelodyState = {
   arpBase: number;
   /** Start step of the chord under the previous note (to notice chord changes). */
   chordStep: number;
+  /** Whether the previous note was a pedal note (so a hold of it is one too). */
+  pedal: boolean;
 };
 
 /** Steps of the phrase that change between A and A′. */
@@ -238,16 +243,16 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
       const chordChanged = state.chordStep !== chord.step;
       state.chordStep = chord.step;
       let midi: number;
+      let pedal = false;
       switch (hit.role) {
         case 'root':
           midi = pedalRoot(ctx.root, chord);
+          pedal = true;
           state.passing = false;
           break;
         case 'move':
-          midi =
-            ctx.profile.rootStay > 0 && ctx.rng.chance(ctx.profile.rootStay)
-              ? pedalRoot(ctx.root, chord)
-              : pickMove(ctx, state.current, chord, strong);
+          pedal = ctx.profile.rootStay > 0 && ctx.rng.chance(ctx.profile.rootStay);
+          midi = pedal ? pedalRoot(ctx.root, chord) : pickMove(ctx, state.current, chord, strong);
           state.passing = false;
           break;
         case 'hold':
@@ -257,6 +262,7 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
             state.passing = false;
           } else {
             midi = state.current;
+            pedal = state.pedal;
           }
           break;
         case 'chrom': {
@@ -293,6 +299,7 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
       }
       state.previous = state.current;
       state.current = midi;
+      state.pedal = pedal;
       prevRole = hit.role;
       out.push({
         step: cellStart + hit.offset,
@@ -301,6 +308,7 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
         palmMute: hit.palmMute,
         accent: hit.accent,
         passing: state.passing,
+        ...(pedal ? { pedal: true } : {}),
       });
     }
     cellStart += cell.length;
@@ -352,12 +360,18 @@ export function generateGuitar1(ctx: MelodyContext, archetype: Archetype, bars: 
     chromDir: -1,
     arpBase: ctx.root,
     chordStep: -1,
+    pedal: false,
   };
   const head = renderCells(headCells, 0, ctx, state);
   const afterHead = { ...state };
   const tail = renderCells(tailCells, headLen, ctx, state);
 
-  const headAgain = head.map((n) => ({ ...n, step: n.step + half }));
+  // A′ repeats A's notes. Over a different chord (chord changes "repeat"/"longer"), the pedal
+  // notes follow the chord now underneath; melody notes stay exactly as they were.
+  const headAgain = head.map((n) => {
+    const step = n.step + half;
+    return n.pedal ? { ...n, step, midi: pedalRoot(ctx.root, chordAt(ctx.chords, step)) } : { ...n, step };
+  });
   const variation = renderCells(variationCells, half + headLen, ctx, { ...afterHead });
 
   const notes = [...head, ...tail, ...headAgain, ...variation];

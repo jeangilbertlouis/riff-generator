@@ -8,6 +8,7 @@ import {
   NOTE_NAMES,
   type Archetype,
   type Bars,
+  type ChordChanges,
   type Complexity,
   type GenerateOptions,
   type NoteName,
@@ -28,6 +29,8 @@ export type Settings = {
   complexity: Complexity;
   /** Guitar tuning, or 'auto' to follow the key. */
   tuning: TuningId | 'auto';
+  /** How the chords move, or 'auto' to pick per riff. */
+  chordChanges: ChordChanges | 'auto';
   /** Runs may leave the scale by semitones. Off: every note stays in the chosen scale. */
   chromaticPassing: boolean;
   bpm: number;
@@ -71,6 +74,7 @@ export function defaultSettings(seed = randomSeed()): Settings {
     guitar2Mode: 'auto',
     complexity: DEFAULT_COMPLEXITY,
     tuning: 'auto',
+    chordChanges: 'auto',
     chromaticPassing: false,
     bpm: DEFAULT_BPM,
     seed,
@@ -104,6 +108,7 @@ export function toGenerateOptions(s: Settings): GenerateOptions {
     guitar2Mode: s.guitar2Mode,
     complexity: s.complexity,
     tuning: s.tuning,
+    chordChanges: s.chordChanges,
     chromaticPassing: s.chromaticPassing,
   };
 }
@@ -130,6 +135,13 @@ export const TUNING_OPTIONS: Option[] = [
   { value: 'auto', label: 'Auto (follows key)' },
   ...TUNING_IDS.map((id) => ({ value: id, label: TUNINGS[id].name })),
 ];
+export const CHORD_CHANGES_LABELS: Record<ChordChanges | 'auto', string> = {
+  auto: 'Auto',
+  steady: 'Steady',
+  longer: 'Longer chords',
+  repeat: 'Repeat on new chord',
+};
+export const CHORD_CHANGES_OPTIONS: Option[] = Object.entries(CHORD_CHANGES_LABELS).map(([value, label]) => ({ value, label }));
 export const COMPLEXITY_OPTIONS: Option[] = COMPLEXITIES.map((c) => ({ value: c, label: COMPLEXITY_LABELS[c] }));
 
 /** Narrow a string from a <select> back to a typed setting value, rejecting anything unknown. */

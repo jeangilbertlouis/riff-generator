@@ -7,6 +7,7 @@ import {
   SCALE_OPTIONS,
   STYLE_OPTIONS,
   TUNING_OPTIONS,
+  CHORD_CHANGES_OPTIONS,
   defaultSettings,
   describeRiff,
   parseBpm,
@@ -49,8 +50,15 @@ describe('settings', () => {
     const s = defaultSettings(42);
     expect(s).toEqual({
       key: 'E', scale: 'harmonicMinor', bars: 4, style: 'auto', guitar2Mode: 'auto', complexity: 'extreme',
-      tuning: 'auto', chromaticPassing: false, bpm: 180, seed: 42,
+      tuning: 'auto', chordChanges: 'auto', chromaticPassing: false, bpm: 180, seed: 42,
     });
+  });
+
+  it('offers the chord-changes options and shows both halves in the summary when they differ', () => {
+    expect(CHORD_CHANGES_OPTIONS.map((o) => o.label)).toEqual(['Auto', 'Steady', 'Longer chords', 'Repeat on new chord']);
+    const r = generateRiff(toGenerateOptions({ ...defaultSettings(4242), key: 'E', scale: 'phrygian', bars: 2, chordChanges: 'repeat' }));
+    expect(r.chordChanges).toBe('repeat');
+    expect(describeRiff(r)).toMatch(/ · i \| [^ ]+ · /);
   });
 
   it('passes the tuning to the engine independently of the key', () => {
