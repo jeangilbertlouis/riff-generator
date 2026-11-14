@@ -1836,6 +1836,141 @@ change within a bar.
 
   Playback raised no errors, and there's no sideways scroll.
 
+### 6.18 Deployment plan: Azure (files ready, not deployed)
+
+**What we're deploying:** a purely static site.
+
+- `npm run build` produces `dist/` (316 KB: `index.html`, one JS bundle and
+  one CSS file).
+- **No server and no API calls:** audio, MIDI export and share links all run
+  in the browser.
+- **No secrets and no stored data:** share links are query strings, so there
+  is no database.
+
+**Recommendation: Azure Static Web Apps (Free plan), deployed by GitHub
+Actions.**
+
+| Option | Verdict |
+|--------|---------|
+| **Static Web Apps, Free** | **Recommended.** Built for static sites: free, global CDN, automatic HTTPS, free custom domains, and a preview URL per pull request. Deploys from the GitHub repository we already have |
+| Storage account (static website) | Works, and is almost free, but HTTPS on a custom domain needs Front Door or a CDN in front, and there are no PR previews |
+| App Service / Container Apps | Overkill: a running server, and a monthly cost, for files that never change at runtime |
+
+**How it would work:**
+
+1. **Push `main` to GitHub.** The repository has the remote
+   `jeangilbertlouis/riff-generator`, but the commits are local only.
+2. **Create the Static Web App** in the Azure portal (or with `az
+   staticwebapp create`) and link it to the repository. Azure adds a
+   deployment token to the repository as a secret.
+3. **GitHub Actions workflow**
+   (`.github/workflows/azure-static-web-apps.yml`), on every push to
+   `main` and every pull request:
+   - set up **Node 22** (LTS; Vitest needs 22.12 or newer, Vite 20.19 or
+     newer);
+   - `npm ci` → `npm test` → `npm run build`. **Tests gate the deploy:** a
+     failing test stops it;
+   - upload the already-built `dist/` with
+     `Azure/static-web-apps-deploy@v1` and `skip_app_build: true`, so
+     Azure doesn't rebuild with its own Node version;
+   - pull requests get their own preview URL, removed when the PR closes.
+4. **`staticwebapp.config.json`** (copied into `dist/` at build time):
+   - **Caching:** `/assets/*` files have content hashes in their names, so
+     they can be cached for a year; `index.html` is always revalidated, so a
+     new deploy shows up immediately.
+   - **Security headers:** `X-Content-Type-Options`, `Referrer-Policy`, and
+     a Content-Security-Policy allowing only the site's own scripts and
+     styles. (Tone.js runs from the bundle, and the app needs no external
+     hosts.)
+   - **No routing rules:** the app is a single page, and share links are
+     query strings on `/`.
+5. **Optional custom domain:** add it in the portal, and HTTPS is issued
+   automatically.
+
+**Cost:** the Free plan covers this: 100 GB of bandwidth a month and 2
+custom domains, with no server to pay for.
+
+**Checks after the first deploy:**
+
+- the site loads over HTTPS;
+- the first Play starts audio (browsers require a click, which the app
+  already handles);
+- a share link opens the same riff;
+- MIDI download works;
+- the response headers are present.
+
+**Status:** the deployment files are in the repository. Creating the Azure
+resource and pushing to GitHub are outward-facing steps, so they wait for
+your go-ahead.
+
+**What was added:**
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/azure-static-web-apps.yml` | On a push to `main`: `npm ci` → `npm test` → `npm run build` → deploy `dist/` to production. On a pull request: the same, to a preview URL, removed when the PR closes |
+| `public/staticwebapp.config.json` | Headers and caching. Vite copies it into `dist/` unchanged |
+
+**Changes from the plan:**
+
+- **Node 26 in CI, not 22.** Node 26 is the current LTS release, and it's the
+  version the project is developed and tested on (all 235 tests). Node 22
+  would have been an untested version.
+- **Two Content-Security-Policy allowances, both from reading the code:**
+  - `style-src 'unsafe-inline'`: the tab's SVG carries its own `<style>`
+    block (`tab/renderSvg.ts`). Without this the tab would render unstyled.
+    The risk is low, because the app never injects user-supplied markup.
+  - `worker-src 'self' blob:`: Tone.js runs its clock in a Web Worker built
+    from a `blob:` URL (`Ticker._createWorker` in Tone 15). Blocked, it
+    falls back to a timer, which is less accurate and is throttled in
+    background tabs.
+
+**The policy in full:**
+
+```
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+img-src 'self' data:; media-src 'self' blob:; worker-src 'self' blob:;
+connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';
+frame-ancestors 'none'
+```
+
+The other headers are `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and a
+`Permissions-Policy` turning off camera, microphone and geolocation. Caching
+is `immutable` for a year on `/assets/*`, and `no-cache` on `/` and
+`/index.html`.
+
+**Verified locally, with production headers:** a small test server served
+the built `dist/` with exactly the headers from
+`staticwebapp.config.json`.
+
+- **Headers:** the page gets `no-cache` plus every security header, and a
+  hashed asset gets `max-age=31536000, immutable`.
+- **Under that policy, in the browser:**
+  - the app loads, and the page CSS and the tab's inline SVG styles apply;
+  - after a real click on Play, the playhead advanced;
+  - Generate works;
+  - Download MIDI produces a valid file (`MThd`, 1,633 bytes);
+  - **no policy violations.** The only one seen during testing came from the
+    test's own `fetch()` of the MIDI `blob:` URL, which `connect-src`
+    rightly blocks; the app downloads through a link instead.
+- `npm run build` copies `staticwebapp.config.json` into `dist/`, and its
+  JSON is valid.
+- **Not verified:** the workflow itself. It runs only on GitHub, so the
+  first push is its test. The YAML follows the action's documented inputs.
+
+**Your steps to go live:**
+
+1. **Create the Static Web App:** Azure portal → Create → Static Web App →
+   Free plan → **Deployment source: Other**. Choosing "GitHub" there would
+   make Azure commit a second workflow of its own.
+2. **Copy the deployment token:** Static Web App → Overview → *Manage
+   deployment token*.
+3. **Save it in GitHub:** repository → Settings → Secrets and variables →
+   Actions → new secret named `AZURE_STATIC_WEB_APPS_API_TOKEN`.
+4. **Push `main`.** The workflow tests, builds and deploys, and the site's
+   URL appears in the Static Web App's overview.
+5. **Optional:** add a custom domain under *Custom domains*.
+
 ---
 
 ## 7. Decisions
