@@ -1836,7 +1836,33 @@ change within a bar.
 
   Playback raised no errors, and there's no sideways scroll.
 
-### 6.18 Deployment plan: Azure (files ready, not deployed)
+### 6.18 Deployment: Azure Static Web Apps (live)
+
+**Live at <https://victorious-sea-0e5b24e03.6.azurestaticapps.net>**
+(deployed 2026-11-14 from `main` @ `e645f53`).
+
+**First deploy, verified:**
+
+- **The GitHub Actions run passed in 1 min 4 s:** CI on Node 26.13.1, all
+  14 test files passed, the build succeeded, and Azure reported "Deployment
+  Complete".
+- **Live headers match the config:** `no-cache` and the full security
+  policy on the page; `max-age=31536000, immutable` on hashed assets.
+- **Live in the browser:**
+  - the app loads, styled;
+  - after a real click on Play, the playhead advances;
+  - MIDI download produces a valid file;
+  - a share link reopens the same riff;
+  - **no policy violations.**
+- **Warnings from the first run,** fixed in the workflow afterwards:
+  - `actions/checkout@v4` and `actions/setup-node@v4` targeted the
+    deprecated Node 20 runtime, so they moved to `@v5` (Node 24);
+  - `skip_api_build` is not an input of `Azure/static-web-apps-deploy@v1`
+    (it was ignored), so it was removed.
+  - A third notice, that the `ubuntu-latest` label moves to Ubuntu 26, is
+    informational only.
+
+#### The original plan
 
 **What we're deploying:** a purely static site.
 
