@@ -61,6 +61,7 @@ export const GUITAR2_LABELS: Record<SecondGuitarMode | 'auto', string> = {
   counter: 'Counter-melody',
   octave: 'Octave',
   arpeggio: 'Arpeggio',
+  mixed: 'Mixed (harmony / counter / arpeggio)',
 };
 
 export const BARS_OPTIONS: Bars[] = [1, 2, 4, 8];
@@ -71,7 +72,8 @@ export function defaultSettings(seed = randomSeed()): Settings {
     scale: 'harmonicMinor',
     bars: 4,
     style: 'auto',
-    guitar2Mode: 'auto',
+    // Mixed switches parts within the riff (readme §6.19); Auto and old links keep one part per riff.
+    guitar2Mode: 'mixed',
     complexity: DEFAULT_COMPLEXITY,
     tuning: 'auto',
     chordChanges: 'auto',
@@ -113,13 +115,20 @@ export function toGenerateOptions(s: Settings): GenerateOptions {
   };
 }
 
+/** "Guitar 2: harmony", or for Mixed the parts in the order they first appear: "Guitar 2: mixed (arpeggio, counter, harmony)". */
+export function describeGuitar2(riff: Riff): string {
+  if (riff.guitar2Mode !== 'mixed') return `Guitar 2: ${GUITAR2_LABELS[riff.guitar2Mode].toLowerCase()}`;
+  const parts = [...new Set(riff.guitar2Sections.map((s) => s.part))];
+  return `Guitar 2: mixed (${parts.join(', ')})`;
+}
+
 /** One-line summary of what was generated, including what "Auto" resolved to. */
 export function describeRiff(riff: Riff): string {
   return [
     riff.tuning.name,
     `${COMPLEXITY_LABELS[riff.complexity]} ${STYLE_LABELS[riff.archetype].toLowerCase()} riff`,
     romanProgression(riff.progression),
-    `Guitar 2: ${GUITAR2_LABELS[riff.guitar2Mode].toLowerCase()}`,
+    describeGuitar2(riff),
     `${riff.bars} bar${riff.bars === 1 ? '' : 's'}`,
     ...(riff.chromaticPassing ? ['chromatic passing'] : []),
   ].join(' · ');

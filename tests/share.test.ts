@@ -69,7 +69,7 @@ describe('share links', () => {
 
   it('an old link with g2=unison falls back to Auto (unison no longer exists)', () => {
     expect(fromQuery('?seed=5&g2=unison', defaults).settings.guitar2Mode).toBe('auto');
-    expect(GUITAR2_OPTIONS.map((o) => o.value)).toEqual(['auto', 'harmony', 'counter', 'octave', 'arpeggio']);
+    expect(GUITAR2_OPTIONS.map((o) => o.value)).toEqual(['auto', 'harmony', 'counter', 'octave', 'arpeggio', 'mixed']);
   });
 
   it('adds tun only for a chosen tuning; no tun, an unknown one, or an old link means Auto', () => {

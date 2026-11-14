@@ -39,7 +39,11 @@ export function fromQuery(query: string, defaults: Settings): ShareState {
     scale: pickOption<ScaleId>(get('scale'), SCALE_IDS) ?? defaults.scale,
     bars: (pickOption(get('bars'), ['1', '2', '4', '8']) ? Number(get('bars')) : defaults.bars) as Bars,
     style: pickOption(get('style'), Object.keys(STYLE_LABELS) as (Archetype | 'auto')[]) ?? defaults.style,
-    guitar2Mode: pickOption(get('g2'), Object.keys(GUITAR2_LABELS) as (SecondGuitarMode | 'auto')[]) ?? defaults.guitar2Mode,
+    // A link with a seed but no valid `g2` (e.g. the removed g2=unison) predates Mixed: it opens with
+    // Auto, the default it was made with, so its riff doesn't change. Only a fresh visit gets Mixed.
+    guitar2Mode:
+      pickOption(get('g2'), Object.keys(GUITAR2_LABELS) as (SecondGuitarMode | 'auto')[]) ??
+      (parseSeed(get('seed')) !== null ? 'auto' : defaults.guitar2Mode),
     // Links from before complexity existed carry a seed but no `cx`: they were made at Normal,
     // so they open at Normal and still play the same riff.
     // No `tun` (or an unknown one, or an old link): Auto, which follows the key as before.

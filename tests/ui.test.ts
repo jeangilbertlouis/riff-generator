@@ -46,10 +46,10 @@ describe('parseSeed', () => {
 });
 
 describe('settings', () => {
-  it('defaults to E Harmonic Minor, 180 BPM, 4 bars, auto style and Guitar 2, Extreme, strict scale', () => {
+  it('defaults to E Harmonic Minor, 180 BPM, 4 bars, auto style, Mixed Guitar 2, Extreme, strict scale', () => {
     const s = defaultSettings(42);
     expect(s).toEqual({
-      key: 'E', scale: 'harmonicMinor', bars: 4, style: 'auto', guitar2Mode: 'auto', complexity: 'extreme',
+      key: 'E', scale: 'harmonicMinor', bars: 4, style: 'auto', guitar2Mode: 'mixed', complexity: 'extreme',
       tuning: 'auto', chordChanges: 'auto', chromaticPassing: false, bpm: 180, seed: 42,
     });
   });

@@ -14,7 +14,7 @@ export type ScaleId =
 export type Archetype = 'tremolo' | 'gallop' | 'chug' | 'breakdown';
 
 /** What Guitar 2 plays. There is deliberately no unison: Guitar 2 always has its own part. */
-export type SecondGuitarMode = 'harmony' | 'counter' | 'octave' | 'arpeggio';
+export type SecondGuitarMode = 'harmony' | 'counter' | 'octave' | 'arpeggio' | 'mixed';
 
 /** A chord over a span of the riff (see harmony.ts). */
 export type ChordSlot = {
@@ -111,4 +111,6 @@ export type Riff = {
   guitar1: NoteEvent[];
   guitar2: NoteEvent[];
   guitar2Mode: SecondGuitarMode;
+  /** Which part Guitar 2 plays where: one section for a single mode; several for 'mixed'. */
+  guitar2Sections: { step: number; length: number; part: Exclude<SecondGuitarMode, 'mixed'> }[];
 };

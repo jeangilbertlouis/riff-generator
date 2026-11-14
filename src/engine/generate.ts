@@ -3,8 +3,8 @@ import { generateDrums } from './drums.ts';
 import { autoChordChanges, chooseProgression } from './harmony.ts';
 import { voicePad } from './pad.ts';
 import { Rng, randomSeed } from './random.ts';
-import { chooseArchetype, generateGuitar1, makeMelodyContext } from './riff.ts';
-import { autoSecondGuitarMode, deriveGuitar2 } from './second.ts';
+import { chooseArchetype, generateGuitar1, makeMelodyContext, type RawNote } from './riff.ts';
+import { autoSecondGuitarMode, deriveGuitar2, mixedGuitar2 } from './second.ts';
 import { SCALES } from './theory.ts';
 import { TUNING_IDS, assignTabPositions, highestPlayable, rootMidi, tuningFor } from './tuning.ts';
 import { CHORD_CHANGES, COMPLEXITIES, NOTE_NAMES, type GenerateOptions, type Riff } from './types.ts';
@@ -49,9 +49,15 @@ export function generateRiff(options: GenerateOptions): Riff {
 
   const requested = options.guitar2Mode ?? 'auto';
   const guitar2Mode = requested === 'auto' ? autoSecondGuitarMode(archetype, rng) : requested;
-  const g2 = deriveGuitar2(g1, guitar2Mode, {
-    key, scale, rng, root, bars, profile, chords: progression, high: highestPlayable(tuning),
-  });
+  const g2ctx = { key, scale, rng, root, bars, profile, chords: progression, high: highestPlayable(tuning) };
+  let g2: RawNote[];
+  let guitar2Sections: Riff['guitar2Sections'];
+  if (guitar2Mode === 'mixed') {
+    ({ notes: g2, sections: guitar2Sections } = mixedGuitar2(g1, g2ctx, archetype));
+  } else {
+    g2 = deriveGuitar2(g1, guitar2Mode, g2ctx);
+    guitar2Sections = [{ step: 0, length: bars * 16, part: guitar2Mode }];
+  }
 
   return {
     key,
@@ -75,5 +81,6 @@ export function generateRiff(options: GenerateOptions): Riff {
     guitar1: assignTabPositions(g1.map(({ pedal: _pedal, ...n }) => n), tuning),
     guitar2: assignTabPositions(g2.map(({ pedal: _pedal, ...n }) => n), tuning),
     guitar2Mode,
+    guitar2Sections,
   };
 }

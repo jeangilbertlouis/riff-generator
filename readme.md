@@ -1997,6 +1997,108 @@ the built `dist/` with exactly the headers from
    URL appears in the Static Web App's overview.
 5. **Optional:** add a custom domain under *Custom domains*.
 
+### 6.19 Guitar 2 "Mixed": switching parts within the riff
+
+**Feedback:** Guitar 2 should be more varied. Within one riff it should
+sometimes harmonise, sometimes play a counter-melody, and sometimes
+arpeggiate.
+
+**Decisions (agreed):**
+
+- **A new Guitar 2 option, Mixed,** which becomes the **default** for new
+  riffs.
+- **Auto and the single modes are unchanged,** so old share links (`g2=auto`
+  and so on) still play exactly the same riff. The golden test, which uses
+  engine defaults, is also unchanged.
+- **Mixed switches between Harmony, Counter-melody and Arpeggio** (not
+  Octave).
+
+**How the riff is split into sections:**
+
+- **Section boundaries follow the chords:** a section starts at each chord
+  change. Sections shorter than half a bar (8 steps) are merged into the one
+  before, so no part is shorter than that. Each half of the riff (A and A′)
+  is split separately, which handles Steady, Longer and Repeat chord
+  changes.
+- **Each section gets one of the three parts:**
+  - the first section's part is weighted by style (Chug: arpeggio or
+    counter; Tremolo: harmony; Gallop: counter; Breakdown: arpeggio);
+  - **every next section switches to a different part**, so it never stays
+    on one part for two sections in a row.
+- **A′ mirrors A** when A has two or more sections, so the riff still feels
+  like A then A′. When each half has only one section (a 1-bar riff, or one
+  chord per half), A′ simply takes a different part from A.
+- **How it's built:** all three parts are generated for the whole riff (each
+  already follows the chords), and each section takes the notes that start
+  in it. A note that would ring past its section's end is cut there, so
+  Guitar 2 stays monophonic and parts don't overlap.
+
+**Code:**
+
+- `SecondGuitarMode` gains `'mixed'`.
+- `Riff.guitar2Sections` lists each section's step range and part, so the
+  UI can show it.
+- The summary lists the parts in the order they first appear, for example
+  "Guitar 2: mixed (arpeggio, counter, harmony)".
+- The Guitar 2 dropdown gains "Mixed (harmony / counter / arpeggio)", and
+  the UI default becomes Mixed. Share links carry `g2=mixed`.
+
+**Tests:**
+
+- Sections tile the riff, each at least 8 steps and starting on a chord
+  change.
+- Consecutive sections use different parts, and a riff uses at least two
+  parts.
+- Each section's notes come from its part: a counter section's notes are in
+  the counter register; an arpeggio section's notes are chord tones of the
+  sounding chord.
+- Guitar 2 stays monophonic and in the scale, with every note playable.
+- Old links (`g2=auto`) are unchanged, and the golden test passes untouched.
+
+**Findings while building it:**
+
+- **Too few riffs used all three parts.** With "different from the previous
+  part" as the only rule, and A′ mirroring A, a 4-bar riff often swung
+  between just two parts: only about 19 % of riffs used all three. Two
+  changes fixed it:
+  - a part not yet used in the riff is weighted ×3 when picking;
+  - when A′ mirrors A, its last section switches to the unused part, if
+    there is one (A′ still starts like A, and the new part arrives as the
+    riff's ending).
+
+  Measured over many seeds afterwards:
+
+  | Bars | Average sections | Riffs using all three parts |
+  |------|------------------|-----------------------------|
+  | 1 | 2.0 | 0 % (two half-bar sections at most) |
+  | 2 | 2.9 | 49 % |
+  | 4 | 4.8 | 92 % |
+  | 8 | 4.8 | 93 % |
+
+- **Changing the UI default broke old links.** A link that had a seed but
+  no valid `g2` (for example the removed `g2=unison`) used to fall back to
+  the default, Auto; with Mixed as the default it would have opened with a
+  different Guitar 2. Now a link with a seed but no valid `g2` opens as
+  **Auto**, and only a fresh visit (no seed) gets Mixed. This is the same
+  rule used for `cx` and `chg`.
+- **A split can also land at the middle of the riff,** where A′ begins,
+  even when no chord changes there (with Longer chords, one chord can span
+  the join). The tests allow a section to start either at a chord change or
+  at the half.
+
+**Verified:**
+
+- 245 tests pass, `tsc --noEmit` is clean, and `vite build` succeeds. The
+  golden fixture is unchanged.
+- In the browser:
+  - the page opens with Guitar 2 set to Mixed, and links carry `g2=mixed`;
+  - a 4-bar Gallop riff ran counter → arpeggio → harmony → arpeggio …, one
+    section per chord;
+  - the summary reads, for example, "Guitar 2: mixed (arpeggio, counter,
+    harmony)";
+  - playback, regenerating while playing, and stopping all ran with no
+    console errors.
+
 ---
 
 ## 7. Decisions

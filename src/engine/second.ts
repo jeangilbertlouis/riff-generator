@@ -31,7 +31,110 @@ export function autoSecondGuitarMode(archetype: Archetype, rng: Rng): SecondGuit
   return rng.weighted(AUTO_GUITAR2[archetype], ([, w]) => w)[0];
 }
 
-export function deriveGuitar2(g1: RawNote[], mode: SecondGuitarMode, ctx: SecondGuitarContext): RawNote[] {
+/** The parts Mixed switches between. */
+export type MixedPart = 'harmony' | 'counter' | 'arpeggio';
+export type Guitar2Section = { step: number; length: number; part: Exclude<SecondGuitarMode, 'mixed'> };
+
+/** Shortest Mixed section: half a bar. */
+export const MIN_SECTION = 8;
+
+/** Mixed: how likely each part is for the riff's first section, per style (later sections avoid the previous part). */
+const MIXED_WEIGHTS: Record<Archetype, [MixedPart, number][]> = {
+  chug: [['arpeggio', 40], ['counter', 40], ['harmony', 20]],
+  tremolo: [['harmony', 50], ['arpeggio', 30], ['counter', 20]],
+  gallop: [['counter', 45], ['harmony', 30], ['arpeggio', 25]],
+  breakdown: [['arpeggio', 50], ['counter', 35], ['harmony', 15]],
+};
+
+/**
+ * Split one half of the riff [from, to) at its chord changes, merging any piece shorter than
+ * MIN_SECTION into its neighbour (the one before, or the next for the first piece).
+ */
+function splitHalf(chords: ChordSlot[], from: number, to: number): [number, number][] {
+  const starts = [...new Set([from, ...chords.map((c) => c.step).filter((s) => s > from && s < to)])].sort((a, b) => a - b);
+  let pieces: [number, number][] = starts.map((s, i) => [s, starts[i + 1] ?? to]);
+  const merged: [number, number][] = [];
+  for (const piece of pieces) {
+    const last = merged.at(-1);
+    if (last && piece[1] - piece[0] < MIN_SECTION) last[1] = piece[1];
+    else merged.push([...piece]);
+  }
+  pieces = merged;
+  if (pieces.length > 1 && pieces[0]![1] - pieces[0]![0] < MIN_SECTION) {
+    pieces[1]![0] = pieces[0]![0];
+    pieces.shift();
+  }
+  return pieces;
+}
+
+/**
+ * Plan Mixed's sections: split each half at chord changes, then give each section a part, never the
+ * same part twice in a row. A′ mirrors A's parts when A has 2+ sections (and the seam allows it).
+ */
+export function mixedSections(chords: ChordSlot[], total: number, archetype: Archetype, rng: Rng): Guitar2Section[] {
+  const half = total / 2;
+  const a = splitHalf(chords, 0, half);
+  const b = splitHalf(chords, half, total);
+  const weights = MIXED_WEIGHTS[archetype];
+  const used = new Set<MixedPart>();
+  // Never the previous section's part; and a part not heard yet in this riff is 3× as likely.
+  const pick = (avoid: MixedPart | null): MixedPart => {
+    const part = rng.weighted(weights.filter(([p]) => p !== avoid), ([p, w]) => (used.has(p) ? w : w * 3))[0];
+    used.add(part);
+    return part;
+  };
+
+  const partsA: MixedPart[] = [];
+  for (let i = 0; i < a.length; i++) partsA.push(pick(partsA[i - 1] ?? null));
+
+  let partsB: MixedPart[];
+  const canMirror = a.length >= 2 && b.length === a.length && partsA[0] !== partsA.at(-1);
+  if (canMirror) {
+    // A′ repeats A's parts, but its last section (where the riff varies anyway) brings in the part
+    // not heard yet, so the riff gets all three.
+    partsB = [...partsA];
+    const unused = (['harmony', 'counter', 'arpeggio'] as MixedPart[]).find((p) => !used.has(p));
+    if (unused) partsB[partsB.length - 1] = unused;
+  } else {
+    partsB = [];
+    for (let i = 0; i < b.length; i++) partsB.push(pick(i === 0 ? (partsA.at(-1) as MixedPart) : (partsB[i - 1] as MixedPart)));
+  }
+
+  return [
+    ...a.map(([s, e], i): Guitar2Section => ({ step: s, length: e - s, part: partsA[i] as MixedPart })),
+    ...b.map(([s, e], i): Guitar2Section => ({ step: s, length: e - s, part: partsB[i] as MixedPart })),
+  ];
+}
+
+/**
+ * Mixed Guitar 2: generate each part for the whole riff, then let every section take the notes
+ * of its part that start inside it, cut at the section's end so parts never overlap.
+ */
+export function mixedGuitar2(
+  g1: RawNote[],
+  ctx: SecondGuitarContext,
+  archetype: Archetype,
+): { notes: RawNote[]; sections: Guitar2Section[] } {
+  const total = ctx.bars * 16;
+  const chords = ctx.chords && ctx.chords.length > 0 ? ctx.chords : [];
+  const sections = mixedSections(chords, total, archetype, ctx.rng);
+  const parts: Record<MixedPart, RawNote[]> = {
+    harmony: harmonize(g1, ctx),
+    counter: counterMelody(ctx),
+    arpeggio: arpeggioPart(ctx),
+  };
+  const notes: RawNote[] = [];
+  for (const sec of sections) {
+    const end = sec.step + sec.length;
+    for (const n of parts[sec.part as MixedPart]) {
+      if (n.step < sec.step || n.step >= end) continue;
+      notes.push({ ...n, duration: Math.min(n.duration, end - n.step) });
+    }
+  }
+  return { notes, sections };
+}
+
+export function deriveGuitar2(g1: RawNote[], mode: Exclude<SecondGuitarMode, 'mixed'>, ctx: SecondGuitarContext): RawNote[] {
   switch (mode) {
     case 'octave':
       return g1.map((n) => {
