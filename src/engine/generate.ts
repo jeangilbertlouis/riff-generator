@@ -1,4 +1,5 @@
 import { PROFILES } from './complexity.ts';
+import { chooseProgression } from './harmony.ts';
 import { Rng, randomSeed } from './random.ts';
 import { chooseArchetype, generateGuitar1, makeMelodyContext } from './riff.ts';
 import { autoSecondGuitarMode, deriveGuitar2 } from './second.ts';
@@ -33,12 +34,13 @@ export function generateRiff(options: GenerateOptions): Riff {
 
   const archetype = !options.style || options.style === 'auto' ? chooseArchetype(bpm, rng) : options.style;
   const chromaticPassing = options.chromaticPassing ?? false;
-  const ctx = makeMelodyContext(key, scale, root, highestPlayable(tuning), rng, profile, chromaticPassing);
+  const progression = chooseProgression(key, scale, bars, profile, rng);
+  const ctx = makeMelodyContext(key, scale, root, highestPlayable(tuning), rng, profile, chromaticPassing, progression);
   const g1 = generateGuitar1(ctx, archetype, bars);
 
   const requested = options.guitar2Mode ?? 'auto';
   const guitar2Mode = requested === 'auto' ? autoSecondGuitarMode(archetype, rng) : requested;
-  const g2 = deriveGuitar2(g1, guitar2Mode, { key, scale, rng, root, bars, profile });
+  const g2 = deriveGuitar2(g1, guitar2Mode, { key, scale, rng, root, bars, profile, chords: progression });
 
   return {
     key,
@@ -51,6 +53,7 @@ export function generateRiff(options: GenerateOptions): Riff {
     archetype,
     complexity,
     chromaticPassing,
+    progression,
     tuning,
     guitar1: assignTabPositions(g1, tuning),
     guitar2: assignTabPositions(g2, tuning),

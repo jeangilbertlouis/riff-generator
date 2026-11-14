@@ -51,9 +51,9 @@ describe('share links', () => {
     expect(state.settings).toEqual({ ...defaults, key: 'G', bpm: 260 });
   });
 
-  it('an empty query gives the defaults (Complex)', () => {
+  it('an empty query gives the defaults (Extreme)', () => {
     expect(fromQuery('', defaults)).toEqual({ settings: defaults, tempo: null });
-    expect(defaults.complexity).toBe('complex');
+    expect(defaults.complexity).toBe('extreme');
   });
 
   it('adds chr=1 only when chromatic passing is on; anything else means off', () => {
@@ -67,7 +67,7 @@ describe('share links', () => {
 
   it('an old link with g2=unison falls back to Auto (unison no longer exists)', () => {
     expect(fromQuery('?seed=5&g2=unison', defaults).settings.guitar2Mode).toBe('auto');
-    expect(GUITAR2_OPTIONS.map((o) => o.value)).toEqual(['auto', 'harmony', 'counter', 'octave']);
+    expect(GUITAR2_OPTIONS.map((o) => o.value)).toEqual(['auto', 'harmony', 'counter', 'octave', 'arpeggio']);
   });
 
   it('carries complexity as cx', () => {
@@ -85,6 +85,6 @@ describe('share links', () => {
 
   it('an invalid cx falls back to Normal when the link has a seed, else to the default', () => {
     expect(fromQuery('?seed=5&cx=insane', defaults).settings.complexity).toBe('normal');
-    expect(fromQuery('?key=G&cx=insane', defaults).settings.complexity).toBe('complex');
+    expect(fromQuery('?key=G&cx=insane', defaults).settings.complexity).toBe('extreme');
   });
 });

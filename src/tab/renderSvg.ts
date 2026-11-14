@@ -16,6 +16,7 @@ const STYLE = `
 .tab-label{fill:var(--tab-muted,#777);font:600 11px ui-monospace,Consolas,monospace}
 .tab-title{fill:var(--tab-text,#222);font:600 12px system-ui,sans-serif}
 .tab-barnum{fill:var(--tab-muted,#777);font:11px system-ui,sans-serif}
+.tab-chord{fill:var(--tab-accent,#d33);font:700 12px system-ui,sans-serif}
 .tab-note{fill:var(--tab-text,#222);font:700 12px ui-monospace,Consolas,monospace;
   stroke:var(--tab-bg,#fff);stroke-width:4px;paint-order:stroke;stroke-linejoin:round;
   text-anchor:middle;dominant-baseline:central}
@@ -82,6 +83,11 @@ export function renderTabSvg(layout: TabLayout): string {
     for (let b = 0; b < sys.barXs.length - 1; b++) {
       parts.push(
         `<text class="tab-barnum" x="${r((sys.barXs[b] as number) + 3)}" y="${r(sys.y + 10)}">${sys.firstBar + b + 1}</text>`,
+      );
+    }
+    for (const c of sys.chords) {
+      parts.push(
+        `<text class="tab-chord" x="${r(c.x)}" y="${r(c.y)}"><title>${escapeXml(c.roman)}</title>${escapeXml(c.name)}</text>`,
       );
     }
     for (const staff of sys.staves) parts.push(renderStaff(staff, sys, layout.stringNames));

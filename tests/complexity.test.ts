@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { GROUPINGS, PROFILES } from '../src/engine/complexity.ts';
@@ -6,32 +5,22 @@ import { generateRiff } from '../src/engine/generate.ts';
 import { CELLS, GROUP_CELLS } from '../src/engine/rhythm.ts';
 import { variationLength } from '../src/engine/riff.ts';
 import { COMPLEXITIES, type Bars, type Complexity, type GenerateOptions, type Riff } from '../src/engine/types.ts';
+import { riffDigest } from './digest.ts';
 
 type GoldenCase = Omit<GenerateOptions, 'bars'> & { bars: Bars; seed: number; hash: string };
 const golden = JSON.parse(readFileSync(new URL('./fixtures/golden-riffs.json', import.meta.url), 'utf8')) as {
   cases: GoldenCase[];
 };
 
-/**
- * Same digest the fixture was made with: Guitar 1's musical content (timing, pitch, articulation)
- * and the style. Tab positions are left out, so fingering changes don't count as different riffs;
- * Guitar 2 is left out because it is derived after Guitar 1 and was changed on purpose (no unison).
- */
-const strip = (notes: Riff['guitar1']) =>
-  notes.map(({ step, duration, midi, palmMute, accent, passing }) => [step, duration, midi, palmMute, accent, passing]);
-const digest = (r: Riff) =>
-  createHash('sha256').update(JSON.stringify([r.archetype, strip(r.guitar1)])).digest('hex').slice(0, 16);
-
-describe('Normal complexity is the original engine', () => {
-  it('reproduces all 84 riffs generated before complexity existed (with chromatic passing on, as they were)', () => {
+describe('regression guard (golden riffs)', () => {
+  it('the engine still produces the 84 recorded riffs; run `npm run golden` after a deliberate change', () => {
     expect(golden.cases).toHaveLength(84);
     for (const { hash, ...opts } of golden.cases) {
-      expect(digest(generateRiff({ ...opts, chromaticPassing: true })), `${opts.key} ${opts.scale} seed ${opts.seed}`).toBe(hash);
-      expect(digest(generateRiff({ ...opts, complexity: 'normal', chromaticPassing: true }))).toBe(hash);
+      expect(riffDigest(generateRiff(opts)), `${opts.key} ${opts.scale} seed ${opts.seed}`).toBe(hash);
     }
   });
 
-  it('defaults to normal', () => {
+  it('the engine defaults to normal', () => {
     expect(generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, seed: 1 }).complexity).toBe('normal');
   });
 

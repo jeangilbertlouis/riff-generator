@@ -1,7 +1,8 @@
-import { PROFILES, type ComplexityProfile, type CounterRhythm } from './complexity.ts';
+import { PROFILES, type ArpRhythm, type ComplexityProfile, type CounterRhythm } from './complexity.ts';
+import { chordAt, type ChordSlot } from './harmony.ts';
 import type { Rng } from './random.ts';
-import type { RawNote } from './riff.ts';
-import { hasFlatTwo, isInScale, scaleNotesInRange, shiftByScaleSteps } from './theory.ts';
+import { arpeggioNote, chordLadder, pedalRoot, type RawNote } from './riff.ts';
+import { isInScale, pc, scaleNotesInRange, shiftByScaleSteps } from './theory.ts';
 import type { Archetype, Bars, NoteName, ScaleId, SecondGuitarMode } from './types.ts';
 
 export type SecondGuitarContext = {
@@ -11,21 +12,21 @@ export type SecondGuitarContext = {
   root: number;
   bars: Bars;
   profile?: ComplexityProfile;
+  /** The riff's chord progression; without it, the part works against the tonic only. */
+  chords?: ChordSlot[];
 };
 
-/** What "Auto" resolves to for each archetype. Never unison: Guitar 2 always plays its own part. */
+/** Auto's choice per style, as weights. Never unison: Guitar 2 always plays its own part. */
+export const AUTO_GUITAR2: Record<Archetype, [SecondGuitarMode, number][]> = {
+  tremolo: [['harmony', 60], ['octave', 25], ['arpeggio', 15]],
+  gallop: [['counter', 40], ['harmony', 30], ['arpeggio', 30]],
+  chug: [['arpeggio', 40], ['counter', 35], ['harmony', 25]],
+  breakdown: [['arpeggio', 45], ['counter', 35], ['octave', 20]],
+};
+
+/** What "Auto" resolves to for each archetype. */
 export function autoSecondGuitarMode(archetype: Archetype, rng: Rng): SecondGuitarMode {
-  switch (archetype) {
-    case 'tremolo':
-      return rng.chance(0.7) ? 'harmony' : 'octave';
-    case 'gallop':
-      return rng.chance(0.6) ? 'counter' : 'harmony';
-    case 'chug':
-      // A lead line over the chugs, or the chugs harmonized.
-      return rng.chance(0.6) ? 'counter' : 'harmony';
-    case 'breakdown':
-      return rng.chance(0.6) ? 'counter' : 'octave';
-  }
+  return rng.weighted(AUTO_GUITAR2[archetype], ([, w]) => w)[0];
 }
 
 export function deriveGuitar2(g1: RawNote[], mode: SecondGuitarMode, ctx: SecondGuitarContext): RawNote[] {
@@ -36,7 +37,14 @@ export function deriveGuitar2(g1: RawNote[], mode: SecondGuitarMode, ctx: Second
       return harmonize(g1, ctx);
     case 'counter':
       return counterMelody(ctx);
+    case 'arpeggio':
+      return arpeggioPart(ctx);
   }
+}
+
+/** The chord at a step (the tonic chord when no progression was given). */
+function chordFor(ctx: SecondGuitarContext, step: number): ChordSlot | null {
+  return ctx.chords && ctx.chords.length > 0 ? chordAt(ctx.chords, step) : null;
 }
 
 /**
@@ -71,8 +79,9 @@ function harmonize(g1: RawNote[], ctx: SecondGuitarContext): RawNote[] {
 }
 
 /**
- * A higher line over Guitar 1, one window per half bar. It repeats like Guitar 1
- * does (A then A′): for 2+ bars the second half copies the first, except its last window.
+ * A higher line over Guitar 1, one window per half bar, favouring tones of the chord under
+ * each note. It repeats like Guitar 1 does (A then A′): for 2+ bars the second half copies
+ * the first, except its last window. It resolves to the final chord's root.
  */
 function counterMelody(ctx: SecondGuitarContext): RawNote[] {
   const { rng } = ctx;
@@ -81,39 +90,40 @@ function counterMelody(ctx: SecondGuitarContext): RawNote[] {
   const totalWindows = (ctx.bars * 16) / 8;
   let current = rng.pick(pool.filter((n) => n >= ctx.root + 15 && n <= ctx.root + 19).concat(ctx.root + 12));
 
-  const nextPitch = (): number => {
+  const nextPitch = (step: number): number => {
+    const chord = chordFor(ctx, step);
     current = rng.weighted(pool, (n) => {
       const d = Math.abs(n - current);
-      if (d === 0) return 0.4;
-      return d <= 2 ? 5 : d <= 4 ? 3 : d <= 7 ? 1.5 : 0.3;
+      const w = d === 0 ? 0.4 : d <= 2 ? 5 : d <= 4 ? 3 : d <= 7 ? 1.5 : 0.3;
+      return chord && chord.tones.includes(pc(n)) ? w * 4 : w;
     });
     return current;
   };
 
   const renderWindow = (w: number): RawNote[] => {
     const start = w * 8;
-    const note = (offset: number, duration: number, midi: number, accent: boolean): RawNote => ({
+    const note = (offset: number, duration: number, accent: boolean, hold = false): RawNote => ({
       step: start + offset,
       duration,
-      midi,
+      midi: hold ? current : nextPitch(start + offset),
       palmMute: false,
       accent,
       passing: false,
     });
     switch (rhythm) {
       case 'sustain':
-        return [note(0, 8, nextPitch(), true)];
+        return [note(0, 8, true)];
       case 'halves':
-        return [note(0, 4, nextPitch(), true), note(4, 4, nextPitch(), false)];
+        return [note(0, 4, true), note(4, 4, false)];
       case 'tremolo': {
         const out: RawNote[] = [];
-        for (let i = 0; i < 8; i++) out.push(note(i, 1, i % 4 === 0 ? nextPitch() : current, i === 0));
+        for (let i = 0; i < 8; i++) out.push(note(i, 1, i === 0, i % 4 !== 0));
         return out;
       }
       case 'eighths':
-        return [0, 2, 4, 6].map((o) => note(o, 2, nextPitch(), o === 0));
+        return [0, 2, 4, 6].map((o) => note(o, 2, o === 0));
       case 'threeThreeTwo':
-        return [note(0, 3, nextPitch(), true), note(3, 3, nextPitch(), true), note(6, 2, nextPitch(), false)];
+        return [note(0, 3, true), note(3, 3, true), note(6, 2, false)];
     }
   };
 
@@ -131,8 +141,9 @@ function counterMelody(ctx: SecondGuitarContext): RawNote[] {
     notes = [...first, ...repeat, ...renderWindow(totalWindows - 1)];
   }
 
-  // Resolve to the root (an octave above Guitar 1) or the ♭2.
-  const target = hasFlatTwo(ctx.scale) && rng.chance(0.3) ? ctx.root + 13 : ctx.root + 12;
+  // Resolve to the root of the chord under the last note's attack, an octave above Guitar 1's pedal.
+  const lastChord = chordFor(ctx, notes.at(-1)?.step ?? 0);
+  const target = lastChord ? pedalRoot(ctx.root, lastChord) + 12 : ctx.root + 12;
   const lastWindowStart = (totalWindows - 1) * 8;
   const tailPitch = notes.at(-1)?.midi;
   for (let i = notes.length - 1; i >= 0; i--) {
@@ -141,4 +152,46 @@ function counterMelody(ctx: SecondGuitarContext): RawNote[] {
     n.midi = target;
   }
   return notes;
+}
+
+/** Tone patterns per arpeggio rhythm (indices into the chord's tones, from its root). */
+const ARP_PATTERNS: Record<ArpRhythm, { tones: number[]; duration: number }> = {
+  eighths: { tones: [0, 1, 2, 1], duration: 2 },
+  sixteenths: { tones: [0, 1, 2, 3, 2, 1], duration: 1 },
+  tremoloPairs: { tones: [0, 0, 1, 1, 2, 2, 1, 1], duration: 1 },
+};
+
+/**
+ * Guitar 2 arpeggiates the progression an octave or more above Guitar 1's pedal: each chord
+ * restarts the pattern from its root. The first half is generated and repeated, like the riff.
+ */
+function arpeggioPart(ctx: SecondGuitarContext): RawNote[] {
+  const profile = ctx.profile ?? PROFILES.normal;
+  const pattern = ARP_PATTERNS[ctx.rng.pick(profile.arpRhythms)];
+  const pool = scaleNotesInRange(ctx.key, ctx.scale, ctx.root + 12, ctx.root + 24);
+  const total = ctx.bars * 16;
+  const half = total / 2;
+  const chords = ctx.chords && ctx.chords.length > 0 ? ctx.chords : null;
+  const slots = chords
+    ? chords.filter((s) => s.step < half)
+    : [{ step: 0, length: half, rootPc: pc(ctx.root), tones: [pc(ctx.root), pc(ctx.root + 3), pc(ctx.root + 7)] }];
+
+  const first: RawNote[] = [];
+  for (const slot of slots) {
+    const ladder = chordLadder(pool, slot as ChordSlot);
+    const base = ladder.find((n) => pc(n) === slot.rootPc) ?? ladder[0] ?? ctx.root + 12;
+    let k = 0;
+    for (let s = slot.step; s < Math.min(slot.step + slot.length, half); s += pattern.duration, k++) {
+      first.push({
+        step: s,
+        duration: Math.min(pattern.duration, slot.step + slot.length - s),
+        midi: arpeggioNote(ladder, base, pattern.tones[k % pattern.tones.length] as number),
+        palmMute: false,
+        // Accent only where the chord changes: steady accents on every beat pushed peaks into the limiter.
+        accent: s === slot.step,
+        passing: false,
+      });
+    }
+  }
+  return [...first, ...first.map((n) => ({ ...n, step: n.step + half }))];
 }

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { generateRiff } from '../src/engine/generate.ts';
+import { chordAt } from '../src/engine/harmony.ts';
 import { variationLength } from '../src/engine/riff.ts';
-import { SCALE_IDS, hasFlatTwo, isInScale, pc, pitchClassOf } from '../src/engine/theory.ts';
+import { SCALE_IDS, isInScale, pc } from '../src/engine/theory.ts';
 import { MAX_FRET, rootMidi } from '../src/engine/tuning.ts';
 import {
   COMPLEXITIES,
@@ -14,7 +15,7 @@ import {
 } from '../src/engine/types.ts';
 
 const ARCHETYPES: Archetype[] = ['tremolo', 'gallop', 'chug', 'breakdown'];
-const MODES: SecondGuitarMode[] = ['harmony', 'counter', 'octave'];
+const MODES: SecondGuitarMode[] = ['harmony', 'counter', 'octave', 'arpeggio'];
 const BARS: Bars[] = [1, 2, 4];
 
 /** A broad sweep of riffs: every key × scale × bars × complexity, across styles, modes and seeds. */
@@ -145,11 +146,11 @@ describe('generateRiff', () => {
     expect(inZone / choosable).toBeGreaterThan(0.5);
   });
 
-  it('ends Guitar 1 on the root, or the b2 when the scale has one', () => {
+  it("ends Guitar 1 on the final chord's root", () => {
     for (const r of RIFFS) {
       const last = r.guitar1.at(-1) as NoteEvent;
-      const degree = pc(last.midi - pitchClassOf(r.key));
-      expect(hasFlatTwo(r.scale) ? [0, 1] : [0]).toContain(degree);
+      const chord = chordAt(r.progression, last.step);
+      expect(pc(last.midi)).toBe(chord.rootPc);
     }
   });
 
@@ -189,7 +190,7 @@ describe('Guitar 2 modes', () => {
     for (const style of ARCHETYPES) {
       for (let seed = 0; seed < 60; seed++) {
         const r = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, seed, style });
-        expect(['harmony', 'counter', 'octave']).toContain(r.guitar2Mode);
+        expect(['harmony', 'counter', 'octave', 'arpeggio']).toContain(r.guitar2Mode);
       }
     }
   });
@@ -212,7 +213,7 @@ describe('Guitar 2 modes', () => {
     }
   });
 
-  it('counter-melody stays an octave or more above the root and ends on root or b2', () => {
+  it("counter-melody stays an octave or more above the root and ends on the final chord's root", () => {
     for (const r of of('counter')) {
       const root = rootMidi(r.tuning, r.key);
       for (const n of r.guitar2) {
@@ -220,7 +221,24 @@ describe('Guitar 2 modes', () => {
         expect(n.midi).toBeLessThanOrEqual(root + 24);
         expect(n.passing).toBe(false);
       }
-      expect([root + 12, root + 13]).toContain((r.guitar2.at(-1) as NoteEvent).midi);
+      const last = r.guitar2.at(-1) as NoteEvent;
+      expect(pc(last.midi)).toBe(chordAt(r.progression, last.step).rootPc);
+    }
+  });
+
+  it('arpeggio mode plays only tones of the chord under each note, an octave or more up, repeating per half', () => {
+    expect(of('arpeggio').length).toBeGreaterThan(10);
+    for (const r of of('arpeggio')) {
+      const root = rootMidi(r.tuning, r.key);
+      for (const n of r.guitar2) {
+        expect(chordAt(r.progression, n.step).tones).toContain(pc(n.midi));
+        expect(n.midi).toBeGreaterThanOrEqual(root + 12);
+        expect(n.midi).toBeLessThanOrEqual(root + 24);
+      }
+      const half = r.totalSteps / 2;
+      const a = r.guitar2.filter((n) => n.step < half).map((n) => [n.step, n.midi]);
+      const b = r.guitar2.filter((n) => n.step >= half).map((n) => [n.step - half, n.midi]);
+      expect(b).toEqual(a);
     }
   });
 });

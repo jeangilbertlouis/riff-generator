@@ -68,6 +68,7 @@ src/
     rhythm.ts        # rhythmic cells (gallops, tremolo, pedal point, breakdown chugs)
     riff.ts          # generator: assembles cells + pitches into Guitar 1's part
     complexity.ts    # complexity levels: profiles (range, leaps, cells, groupings, variation) and odd groupings
+    harmony.ts       # chords on scale degrees, names, progression templates, chord timeline
     second.ts        # derives Guitar 2's part from Guitar 1 (see §4.6)
     generate.ts      # generateRiff(options): validation + wiring, the engine's entry point
     asciiTab.ts      # text tab for debugging and the CLI preview
@@ -233,6 +234,7 @@ archetype choose). Unison was removed in §6.9: Guitar 2 always plays its own pa
 | **Harmony** | The same rhythm, each note moved up a diatonic 3rd (or 5th/4th) *inside the chosen scale* | Tremolo and melodic riffs |
 | **Counter-melody** | Sustained or tremolo notes over Guitar 1's chugs, chosen from the scale, moving against the bass line | Pedal-point and gallop riffs |
 | **Octave** | Guitar 1 one octave up, on the higher strings | Tremolo riffs |
+| **Arpeggio** (§6.10) | The chord progression arpeggiated an octave or more up, in 8ths, 16ths or tremolo pairs | Chug and breakdown riffs |
 
 The harmony mode works on scale degrees, not fixed semitones. In Phrygian, a
 diatonic 3rd above the root is a minor 3rd, and above the ♭2 it is a major
@@ -730,7 +732,7 @@ in the UI sets how far the generator goes.
 |-------|----------|
 | **Simple** | Core cells only, stepwise melody in one octave, lots of pedal tone, no chromatic runs |
 | **Normal** | Exactly today's generator. Every existing seed and share link gives the same riff |
-| **Complex** (new default) | Odd groupings, style changes within a riff, wider and more dissonant melody, new techniques, a longer variation, a busier Guitar 2 |
+| **Complex** (the default until §6.11) | Odd groupings, style changes within a riff, wider and more dissonant melody, new techniques, a longer variation, a busier Guitar 2 |
 | **Extreme** | All of Complex, pushed further, and almost no repetition |
 
 **What complexity controls** (one `ComplexityProfile` per level in `engine/complexity.ts`):
@@ -775,7 +777,7 @@ in the UI sets how far the generator goes.
 - **A golden test** (`tests/fixtures/golden-riffs.json`) holds hashes of 84
   riffs generated *before* this change, covering every key and scale. Normal
   must reproduce all of them.
-- **The UI defaults to Complex.**
+- **The UI defaults to Complex** (changed to Extreme in §6.11).
 - **Share links:** the new parameter is `cx`. An old link, which has a seed
   but no `cx`, opens at Normal, so it still plays the riff it was made with.
 
@@ -1098,6 +1100,214 @@ for that scale.
 - **Auto on the old unison styles:** a Chug riff now gets harmony, and a
   Breakdown riff a counter-melody.
 
+### 6.10 Chord progressions and arpeggios
+
+**Feedback:** the riffs sound too random. Each riff should rest on an
+underlying chord progression, and the generator should use it for more
+arpeggios.
+
+**Decisions (agreed):**
+
+- It applies to **every level, including Normal**. Old seeds and links
+  produce new, chord-based riffs.
+- The **low pedal note follows the chord root**, so the riff audibly
+  outlines the progression (e.g. E → F → C).
+- **Chord names appear above the tab** where chords change, and the summary
+  shows the progression in Roman numerals.
+- **Guitar 2 gets an Arpeggio mode**, which Auto uses.
+
+**Baseline** (Guitar 1, 216 riffs per level: 12 keys × 6 non-chromatic
+scales × 3 seeds, 2 bars; measured independently of any chord model):
+
+| Level | Arpeggio share¹ | Pitch entropy per bar² | Melodic notes fitting the best diatonic chord per half bar³ |
+|-------|-----------------|------------------------|-------------------------------------------------------------|
+| Simple | 0.2 % | 0.85 bits | 82.6 % |
+| Normal | 0.4 % | 1.19 bits | 80.4 % |
+| Complex | 5.2 % | 1.51 bits | 79.3 % |
+| Extreme | 5.5 % | 1.47 bits | 78.3 % |
+
+¹ Groups of three distinct notes moving one way, all from one diatonic
+triad. ² How scattered the pitches are. ³ A weak measure: with only 2–3
+melodic notes per half bar, the best of seven triads nearly always fits.
+After the change, the fit is measured against the engine's *own* chords.
+
+**Plan:**
+
+1. **Chords** (`engine/harmony.ts`, pure):
+   - **Triads:** the chord on scale degree *d* stacks the scale's own thirds
+     (*d*, *d*+2, *d*+4 scale steps). That gives the right quality in every
+     scale: Phrygian i, ♭II, ♭VI; Harmonic Minor V and ♭III+; diminished
+     triads in the half-whole scale.
+   - **The Chromatic scale** has no diatonic thirds, so its chords are
+     minor triads on chosen roots.
+   - **Names:** Roman numerals relative to the key (lowercase = minor,
+     ° = diminished, + = augmented, ♭ for lowered roots) and letter names
+     (Em, F, C, B°).
+2. **Progressions per scale:** hand-picked, idiomatic templates of 2 and 4
+   chords, always starting on the tonic.
+
+   | Scale | Examples |
+   |-------|----------|
+   | Phrygian | i–♭II, i–♭VI–♭II–i, i–iv–♭II–i |
+   | Phrygian dominant | I–♭II, I–iv–♭II–I |
+   | Locrian | i°–♭II, i°–♭V–♭II–i° |
+   | Natural minor | i–♭VI, i–♭VI–♭VII–i |
+   | Harmonic minor | i–V, i–iv–V–i, i–♭VI–V–i |
+   | Diminished | minor-third axis moves (i°–♭iii°…) |
+   | Chromatic | ♭II and tritone moves on minor chords |
+
+3. **Harmonic rhythm:** the progression spans **one half of the riff (A)**
+   and repeats in A′, so the A/A′ repetition stays true to the harmony.
+
+   | Riff length | Chords per half | Chord length |
+   |-------------|-----------------|--------------|
+   | 1 bar | 2 | one beat |
+   | 2 bars | 2; sometimes 4 at Complex and Extreme | half a bar (a beat with 4) |
+   | 4 bars | 4 (2 at Simple) | half a bar (a bar with 2) |
+
+   Simple always uses 2-chord progressions.
+4. **Melody follows the chords:**
+   - The **pedal (`root` role)** plays the current chord's root in the low
+     register.
+   - **Melodic choices** strongly favour chord tones of the current chord.
+   - **String skips** reach for chord tones.
+   - **The riff ends** on the final chord's root.
+   - **Scale runs** stay as passing motion between chord tones.
+5. **Arpeggio cells:** a new `arp` role plays the *k*-th chord tone above
+   the arpeggio's base (the chord root nearest the current note). Cells:
+   - `arpUp`, `arpDown` and `arpBroken` (1-5-3-5), plus `arpRoll` (an
+     up-and-down 16th sweep);
+   - `tremArp` (tremolo pairs per chord tone) and `tremArpBeat` (a chord tone
+     per beat);
+   - `pedalArp`: a palm-muted pedal alternating with chord tones;
+   - `ringArp`, ringing chord tones for breakdowns;
+   - 3-, 5- and 6-step arpeggio groups for the odd groupings.
+
+   They join every style's pool at every level, with more and faster ones as
+   complexity rises. The old random-leap "arpeggio" cell becomes a real chord
+   arpeggio.
+6. **Guitar 2:**
+   - **Counter-melody** favours chord tones of the chord under each window,
+     and resolves to the final chord's root.
+   - **New Arpeggio mode:** chord tones an octave up, following the
+     progression, in 8ths, 16ths or tremolo pairs.
+   - **Auto now:**
+
+     | Style | Auto |
+     |-------|------|
+     | Chug | 40 % arpeggio, 35 % counter, 25 % harmony |
+     | Breakdown | 45 % arpeggio, 35 % counter, 20 % octave |
+     | Gallop | 40 % counter, 30 % harmony, 30 % arpeggio |
+     | Tremolo | 60 % harmony, 25 % octave, 15 % arpeggio |
+
+7. **Display:**
+   - Chord names above the Guitar 1 staff at each change.
+   - Roman numerals in the summary, for example "i – ♭VI – ♭II – i".
+   - A chord line in the text tab.
+8. **Golden test:** the old one guarded "Normal = old engine", which is
+   intentionally no longer true. It becomes a **regression guard** for the
+   new engine, regenerated by a script (`scripts/update-golden.ts`) when a
+   change is deliberate.
+
+**Tests:**
+
+- Chord qualities and names per scale; templates are valid and start on
+  the tonic.
+- The progression covers the riff, and both halves have the same chords.
+- Every palm-muted pedal note is the current chord's root.
+- The riff ends on the final chord's root.
+- Guitar 2's Arpeggio mode plays only chord tones, an octave or more up.
+- All earlier invariants (strict scale, monophonic, playable, A/A′) still
+  hold.
+- **Measured against the baseline:** the arpeggio share rises sharply at
+  every level, and most melodic notes are tones of the engine's own current
+  chord.
+
+**Results** (same 216 riffs per level as the baseline):
+
+| Level | Arpeggio share, before → after | Strong-beat notes on the current chord | Melodic notes on the current chord | Guitar 2 notes on the current chord |
+|-------|--------------------------------|----------------------------------------|------------------------------------|-------------------------------------|
+| Simple | 0.2 % → **21.4 %** | 91.3 % | 90.5 % | 83.7 % |
+| Normal | 0.4 % → **21.8 %** | 88.9 % | 86.1 % | 80.3 % |
+| Complex | 5.2 % → **28.1 %** | 79.9 % | 82.0 % | 73.9 % |
+| Extreme | 5.5 % → **25.2 %** | 78.9 % | 80.3 % | 75.8 % |
+
+**Findings while building it:**
+
+- **Strong beats needed their own rule.** In the first version, melodic notes
+  favoured chord tones equally everywhere, and only 69–85 % of strong-beat
+  notes (accents and beat starts) were chord tones. Two changes raised that
+  to 79–91 %:
+  - chord-tone weight doubles on strong beats;
+  - a held tremolo note that crosses into a chord it doesn't belong to is
+    re-picked.
+
+  Weak beats keep room for colour: scale runs, trills, and the ♭2/tritone
+  weighting at higher levels.
+- **Pitch entropy is the wrong yardstick here.** Per-bar pitch entropy rose
+  (Normal 1.19 → 1.68 bits), because the pedal now moves between chord roots
+  and arpeggios span three chord tones. There are more pitches, but they are
+  organized by the harmony. The measures that capture "random" are the
+  chord-tone shares above.
+- **The counter-melody resolved to the wrong chord.** It used the chord at
+  the riff's last step, but its last note can start under the previous chord
+  (a sustained note with 4 chords per half). It now uses the chord under the
+  last note's attack, like Guitar 1.
+- **The harmonic rhythm table was wrong** in the first draft of this plan: 4
+  chords per half in a 4-bar riff last half a bar each, not a bar. The table
+  is corrected above.
+- **Arpeggio accents and the limiter.** Guitar 2's Arpeggio mode first
+  accented every beat. With both guitars that pushed the peak of one test
+  riff to 0.891, the limiter's −1 dB threshold. Accenting only chord changes
+  brought the other test riffs to 0.74–0.84. One riff still touches 0.889 at
+  a chord change where both guitars accent together: a brief peak, caught.
+- **Chord names fit the tab:** they are at most 3 characters ("C#m", "G#°"),
+  in the band under the bar numbers (now 30 px tall).
+
+**Verified:**
+
+- **186 tests pass.** The new ones cover:
+  - 12 chord names and numerals across all scales; triads built only from
+    scale tones;
+  - templates; full timeline coverage, with identical halves starting on
+    the tonic; 2 versus 4 chords per half;
+  - every palm-muted pedal note being the current chord's root (more than
+    1,000 notes), and the pedal moving in most riffs;
+  - the arpeggio ladder and fold-back; all 12 arpeggio cells;
+  - Arpeggio mode: only chord tones, at least an octave up, repeating per
+    half;
+  - the counter-melody and Guitar 1 ending on the right chord root;
+  - chord names in the SVG tab at three widths;
+  - the "less random" thresholds per level.
+  - All earlier invariants still hold, including the strict scale.
+- **Golden test:** it is now a regression guard for this engine (`npm run
+  golden` regenerates it after deliberate changes).
+- **In the browser:**
+  - A Harmonic Minor, 4 bars, Complex: Am Dm E Am above the tab, the summary
+    reads "i – iv – V – i", and Guitar 2's arpeggios follow each chord.
+  - Arpeggio is offered in the Guitar 2 dropdown.
+  - Offline renders have no NaNs, and the console has no errors.
+
+### 6.11 New starting settings
+
+What a fresh page load (a URL without parameters) starts with:
+
+| Setting | Before | Now |
+|---------|--------|-----|
+| Key | E | E (unchanged) |
+| Scale | Phrygian | **Harmonic Minor** |
+| Bars | 2 | **4** |
+| Complexity | Complex | **Extreme** |
+| Count-in | on | **off** |
+
+- **Only the UI's starting settings changed** (`defaultSettings` in
+  `ui/settings.ts`, and the count-in switch in `index.html`).
+- **The engine's own defaults are unchanged** (Normal, 2 bars), so the golden
+  test is unaffected.
+- **Share links still say what they contain.** A link with missing values
+  falls back to these new defaults, except a link with a seed but no `cx`,
+  which still opens at Normal.
+
 ---
 
 ## 7. Decisions
@@ -1111,7 +1321,8 @@ for that scale.
 | Q5 | Tuning | **Follows the key** (root = open low string) |
 | Q6 | MIDI / audio export | **MIDI export later**, as a polish item; no audio export |
 | Q7 | Default Guitar 2 mode | **Auto**: the archetype picks; never unison (§6.9) |
-| Q8 | Count-in | **On by default** |
+| Q8 | Count-in | **Off by default** (was on; changed in §6.11) |
+| Q9 | Starting settings | **E Harmonic Minor, 4 bars, Extreme**, count-in off (§6.11) |
 
 ## 8. Open questions
 

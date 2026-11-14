@@ -2,6 +2,7 @@ import type { Weighted } from './rhythm.ts';
 import type { Archetype, Bars, Complexity } from './types.ts';
 
 export type CounterRhythm = 'sustain' | 'halves' | 'tremolo' | 'eighths' | 'threeThreeTwo';
+export type ArpRhythm = 'eighths' | 'sixteenths' | 'tremoloPairs';
 
 /**
  * Everything the complexity level changes. Values of "no effect" (0, 1, empty) must not
@@ -32,24 +33,32 @@ export type ComplexityProfile = {
   harmonyVaries: boolean;
   /** Rhythms the counter-melody can use (Normal keeps the original three, in order). */
   counterRhythms: readonly CounterRhythm[];
+  /** Rhythms Guitar 2's Arpeggio mode can use. */
+  arpRhythms: readonly ArpRhythm[];
+  /** Weight multiplier for melodic notes that are tones of the current chord. */
+  chordToneBoost: number;
+  /** Most chords per half of the riff: 4-bar riffs use this many; 1-bar riffs always use 2. */
+  maxChordsPerHalf: 2 | 4;
+  /** Chance a 2-bar riff uses 4 chords per half (a chord per beat) instead of 2. */
+  fourChordChance: number;
 };
 
 const ORIGINAL_VARIATION = (bars: Bars) => (bars === 1 ? 4 : 8);
 const ORIGINAL_COUNTER: readonly CounterRhythm[] = ['sustain', 'halves', 'tremolo'];
 
-/** Technique cells for Complex and Extreme, flavored per style. */
+/** Technique cells for Complex and Extreme, flavored per style (arpeggios weigh heaviest). */
 const TECH_CELLS: Record<Archetype, readonly Weighted[]> = {
-  tremolo: [['trill', 3], ['arpeggio', 3], ['chromRun8', 2], ['tremoloHalf', 2]],
-  gallop: [['stringSkip', 3], ['arpeggio', 2], ['trill', 1], ['chromRun8', 1]],
-  chug: [['stringSkip', 3], ['trill', 1], ['arpeggio', 1], ['chromRun', 1]],
-  breakdown: [['stringSkip', 2], ['arpeggio', 1], ['chromRun', 1]],
+  tremolo: [['arpRoll', 3], ['arpBroken', 2], ['arpeggio', 3], ['trill', 2], ['chromRun8', 1], ['tremoloHalf', 2]],
+  gallop: [['stringSkip', 3], ['arpBroken', 2], ['arpeggio', 2], ['trill', 1], ['chromRun8', 1]],
+  chug: [['stringSkip', 3], ['arpBroken', 2], ['arpeggio', 1], ['trill', 1], ['chromRun', 1]],
+  breakdown: [['stringSkip', 2], ['arpBroken', 1], ['arpeggio', 1], ['chromRun', 1]],
 };
 
 const EXTREME_CELLS: Record<Archetype, readonly Weighted[]> = {
-  tremolo: [['trill', 4], ['arpeggio', 4], ['chromRun8', 3], ['tremoloHalf', 3]],
-  gallop: [['stringSkip', 4], ['arpeggio', 3], ['trill', 2], ['chromRun8', 2]],
-  chug: [['stringSkip', 4], ['trill', 2], ['arpeggio', 2], ['chromRun8', 1]],
-  breakdown: [['stringSkip', 3], ['arpeggio', 2], ['trill', 1], ['chromRun', 1]],
+  tremolo: [['arpRoll', 4], ['arpBroken', 3], ['arpeggio', 4], ['trill', 3], ['chromRun8', 2], ['tremoloHalf', 3]],
+  gallop: [['stringSkip', 4], ['arpRoll', 2], ['arpBroken', 3], ['arpeggio', 3], ['trill', 2], ['chromRun8', 1]],
+  chug: [['stringSkip', 4], ['arpBroken', 3], ['arpeggio', 2], ['trill', 2], ['chromRun8', 1]],
+  breakdown: [['stringSkip', 3], ['arpBroken', 2], ['arpeggio', 2], ['trill', 1], ['chromRun', 1]],
 };
 
 export const PROFILES: Record<Complexity, ComplexityProfile> = {
@@ -59,13 +68,17 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     dissonanceBoost: 1,
     highRegister: 0.6,
     rootStay: 0.3,
-    removeCells: ['chromRun', 'chugDotted', 'gallopReverse'],
+    removeCells: ['chromRun', 'chugDotted', 'gallopReverse', 'tremArp'],
     extraCells: {},
     groupingChance: 0,
     styleSwitchChance: 0,
     variation: ORIGINAL_VARIATION,
     harmonyVaries: false,
     counterRhythms: ['sustain', 'halves'],
+    arpRhythms: ['eighths'],
+    chordToneBoost: 4,
+    maxChordsPerHalf: 2,
+    fourChordChance: 0,
   },
   normal: {
     range: 19,
@@ -80,6 +93,10 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     variation: ORIGINAL_VARIATION,
     harmonyVaries: false,
     counterRhythms: ORIGINAL_COUNTER,
+    arpRhythms: ['eighths', 'tremoloPairs'],
+    chordToneBoost: 3.5,
+    maxChordsPerHalf: 4,
+    fourChordChance: 0,
   },
   complex: {
     range: 22,
@@ -94,6 +111,10 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     variation: (bars) => (bars === 4 ? 16 : ORIGINAL_VARIATION(bars)),
     harmonyVaries: true,
     counterRhythms: [...ORIGINAL_COUNTER, 'eighths', 'threeThreeTwo'],
+    arpRhythms: ['eighths', 'sixteenths', 'tremoloPairs'],
+    chordToneBoost: 2.5,
+    maxChordsPerHalf: 4,
+    fourChordChance: 0.35,
   },
   extreme: {
     range: 24,
@@ -109,6 +130,10 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     variation: (bars) => (bars === 1 ? 4 : (bars * 16) / 2 - 4),
     harmonyVaries: true,
     counterRhythms: ['halves', 'tremolo', 'eighths', 'threeThreeTwo'],
+    arpRhythms: ['sixteenths', 'tremoloPairs'],
+    chordToneBoost: 2,
+    maxChordsPerHalf: 4,
+    fourChordChance: 0.6,
   },
 };
 

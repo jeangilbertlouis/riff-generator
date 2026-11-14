@@ -12,7 +12,8 @@ export const METRICS = {
   labelWidth: 20,
   barPad: 8,
   stringSpacing: 12,
-  barNumberHeight: 14,
+  /** Top band of each system: bar numbers, then chord names. */
+  barNumberHeight: 30,
   headerHeight: 28,
   pmHeight: 18,
   staffGap: 6,
@@ -62,6 +63,8 @@ export type SystemLayout = {
   /** x of every beat inside a bar (not on bar lines), for the faint rhythm ticks. */
   beatXs: number[];
   staves: [StaffLayout, StaffLayout];
+  /** Chord names where a chord starts in this system (above the staves). */
+  chords: { x: number; y: number; name: string; roman: string }[];
   cursorTop: number;
   cursorBottom: number;
 };
@@ -174,6 +177,9 @@ export function layoutTab(riff: Riff, { width }: LayoutOptions): TabLayout {
       xEnd,
       barXs,
       beatXs,
+      chords: riff.progression
+        .filter((c) => c.step >= firstStep && c.step < firstStep + steps)
+        .map((c) => ({ x: left(c.step - firstStep) + 1, y: y + 25, name: c.name, roman: c.roman })),
       staves,
       cursorTop: (staves[0].stringYs[0] as number) - 8,
       cursorBottom: (staves[1].stringYs.at(-1) as number) + 8,

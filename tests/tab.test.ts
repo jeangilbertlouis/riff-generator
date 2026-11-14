@@ -202,6 +202,25 @@ describe('renderTabSvg', () => {
     }
   });
 
+  it('names every chord above the staves where it starts, with its Roman numeral as a tooltip', () => {
+    for (const width of [420, 800, 1600]) {
+      const r4 = riff(4, 77, { scale: 'harmonicMinor', key: 'A', complexity: 'complex' });
+      const l = layoutTab(r4, { width });
+      const placed = l.systems.flatMap((s) => s.chords);
+      expect(placed.map((c) => c.name)).toEqual(r4.progression.map((c) => c.name));
+      for (const s of l.systems) {
+        for (const c of s.chords) {
+          expect(c.x).toBeGreaterThanOrEqual(s.x0);
+          expect(c.x).toBeLessThan(s.xEnd);
+          expect(c.y).toBeLessThan(s.staves[0].stringYs[0]! - 10); // above Guitar 1's header row
+        }
+      }
+      const out = renderTabSvg(l);
+      expect((out.match(/class="tab-chord"/g) ?? []).length).toBe(r4.progression.length);
+      expect(out).toContain('<title>V</title>E</text>');
+    }
+  });
+
   it('has balanced tags', () => {
     expect(count(/<g /g)).toBe(count(/<\/g>/g));
     expect(count(/<text /g)).toBe(count(/<\/text>/g));

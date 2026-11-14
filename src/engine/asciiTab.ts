@@ -30,12 +30,27 @@ export function formatPartTab(notes: NoteEvent[], tuning: Tuning, totalSteps: nu
   return lines.join('\n');
 }
 
+/** Chord names above the tab, at each chord change (same column layout as the tab rows). */
+function chordLine(riff: Riff): string {
+  const cols: string[] = [];
+  for (let step = 0; step < riff.totalSteps; step++) {
+    if (step > 0 && step % 16 === 0) cols.push(' ');
+    const slot = riff.progression.find((s) => s.step === step);
+    // Names are at most 3 characters ("C#m", "G#°"), so each fits its column.
+    cols.push(slot ? slot.name.padEnd(COL) : ' '.repeat(COL));
+  }
+  return `   ${cols.join('')}`.trimEnd();
+}
+
 export function formatAsciiTab(riff: Riff): string {
+  const roman = riff.progression.slice(0, riff.progression.length / 2).map((s) => s.roman).join(' – ');
   const header = `${riff.key} ${riff.scale}, ${riff.bpm} BPM, ${riff.bars} bar(s), ${riff.tuning.name}, ` +
     `${riff.archetype}, ${riff.complexity}, G2 ${riff.guitar2Mode}, seed ${riff.seed}`;
   return [
     header,
+    `Progression: ${roman}`,
     '',
+    chordLine(riff),
     'Guitar 1',
     formatPartTab(riff.guitar1, riff.tuning, riff.totalSteps),
     '',

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "riff": "node scripts/print-riff.ts"
+    "riff": "node scripts/print-riff.ts",
+    "golden": "node scripts/update-golden.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

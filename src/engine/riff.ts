@@ -1,7 +1,8 @@
 import { GROUPINGS, PROFILES, type ComplexityProfile } from './complexity.ts';
-import { ARCHETYPE_CELLS, CELLS, GROUP_CELLS, archetypeWeights, type Cell, type Weighted } from './rhythm.ts';
+import { chordAt, chordOnDegree, type Chord, type ChordSlot } from './harmony.ts';
+import { ARCHETYPE_CELLS, CELLS, GROUP_CELLS, archetypeWeights, type Cell, type Hit, type Weighted } from './rhythm.ts';
 import type { Rng } from './random.ts';
-import { degreeOf, hasFlatTwo, isInScale, scaleNotesInRange } from './theory.ts';
+import { degreeOf, isInScale, pc, scaleNotesInRange } from './theory.ts';
 import type { Archetype, Bars, Complexity, NoteEvent, NoteName, ScaleId } from './types.ts';
 
 /** A note before it has a tab position. */
@@ -18,6 +19,8 @@ export type MelodyContext = {
   profile: ComplexityProfile;
   /** Runs step by semitones (outside the scale) instead of scale steps. Off by default. */
   chromaticPassing: boolean;
+  /** The chord progression laid over the riff. */
+  chords: ChordSlot[];
 };
 
 type MelodyState = {
@@ -26,7 +29,10 @@ type MelodyState = {
   previous: number;
   passing: boolean;
   chromDir: number;
-  leapDir: number;
+  /** Where the current arpeggio is anchored (a chord root). */
+  arpBase: number;
+  /** Start step of the chord under the previous note (to notice chord changes). */
+  chordStep: number;
 };
 
 /** Steps of the phrase that change between A and A′. */
@@ -48,6 +54,7 @@ export function makeMelodyContext(
   rng: Rng,
   profile: ComplexityProfile = PROFILES.normal,
   chromaticPassing = false,
+  chords?: ChordSlot[],
 ): MelodyContext {
   return {
     key,
@@ -56,9 +63,18 @@ export function makeMelodyContext(
     root,
     profile,
     chromaticPassing,
+    // Without a progression, the tonic chord holds for the whole riff.
+    chords: chords ?? [{ ...chordOnDegree(key, scale, 0), step: 0, length: Number.MAX_SAFE_INTEGER }],
     pool: scaleNotesInRange(key, scale, root, Math.min(root + profile.range, high)),
   };
 }
+
+/** The chord's root in the low register: the lowest pitch at or above the key's root. */
+export function pedalRoot(root: number, chord: Chord): number {
+  return root + pc(chord.rootPc - root);
+}
+
+const isChordTone = (midi: number, chord: Chord) => chord.tones.includes(pc(midi));
 
 /** The style's cell pool, adjusted by the complexity profile. Normal returns the original pool unchanged. */
 export function cellPool(archetype: Archetype, profile: ComplexityProfile): Weighted[] {
@@ -119,10 +135,21 @@ function groupCell(length: number, archetype: Archetype, pool: Weighted[], rng: 
   return CELLS[rng.weighted(options, ([, w]) => w)[0]] as Cell;
 }
 
-/** Weighted choice of the next melody note, following death metal habits (§4.2 of the readme). */
-export function pickMove(ctx: MelodyContext, current: number): number {
+/**
+ * Weighted choice of the next melody note, following death metal habits (§4.2 of the readme)
+ * and the current chord: its tones weigh more (by the profile's chordToneBoost).
+ */
+export function pickMove(
+  ctx: MelodyContext,
+  current: number,
+  chord: Chord = chordAt(ctx.chords, 0),
+  strong = false,
+): number {
   const p = ctx.profile;
-  const candidates = ctx.pool.filter((n) => n !== current && n !== ctx.root);
+  // Strong beats (accents and beat starts) want chord tones twice as much; weak ones leave room for colour.
+  const chordBoost = p.chordToneBoost * (strong ? 2 : 1);
+  const pedal = pedalRoot(ctx.root, chord);
+  const candidates = ctx.pool.filter((n) => n !== current && n !== pedal);
   if (candidates.length === 0) return current;
   return ctx.rng.weighted(candidates, (n) => {
     const d = Math.abs(n - current);
@@ -132,29 +159,44 @@ export function pickMove(ctx: MelodyContext, current: number): number {
     if (degree === 1) w *= 2.5 * p.dissonanceBoost; // ♭2
     if (degree === 6) w *= 2 * p.dissonanceBoost; // tritone
     if (n > ctx.root + 12) w *= p.highRegister; // keep it low and heavy
+    if (isChordTone(n, chord)) w *= chordBoost * (pc(n) === chord.rootPc ? 1.2 : 1);
     return w;
   });
 }
 
-/** A leap of at least a minor 3rd, alternating direction where the range allows (broken arpeggio). */
-function pickLeap(ctx: MelodyContext, state: MelodyState): number {
-  const pick = (dir: number) => ctx.pool.filter((n) => (n - state.current) * dir >= 3 && n !== ctx.root);
-  let options = pick(state.leapDir);
-  if (options.length === 0) {
-    state.leapDir = -state.leapDir;
-    options = pick(state.leapDir);
-  }
-  if (options.length === 0) return pickMove(ctx, state.current);
-  const choice = ctx.rng.weighted(options, (n) => 1 / Math.abs(n - state.current)); // prefer the nearer leaps
-  state.leapDir = -state.leapDir;
-  return choice;
+/** A chord tone from the upper part of the range, for string skipping against the low pedal. */
+function pickHigh(ctx: MelodyContext, current: number, chord: Chord): number {
+  const high = ctx.pool.filter((n) => n >= ctx.root + 7 && n !== current);
+  if (high.length === 0) return pickMove(ctx, current, chord);
+  return ctx.rng.weighted(high, (n) => (Math.abs(n - current) <= 4 ? 3 : 1) * (isChordTone(n, chord) ? 4 : 1));
 }
 
-/** A note from the upper part of the range, for string skipping against the low pedal. */
-function pickHigh(ctx: MelodyContext, current: number): number {
-  const high = ctx.pool.filter((n) => n >= ctx.root + 7 && n !== current);
-  if (high.length === 0) return pickMove(ctx, current);
-  return ctx.rng.weighted(high, (n) => (Math.abs(n - current) <= 4 ? 3 : 1) * (degreeOf(n, ctx.key) === 1 ? 2 : 1));
+/** The chord's tones within the melody's range, ascending (the rungs an arpeggio climbs). */
+export function chordLadder(pool: number[], chord: Chord): number[] {
+  return pool.filter((n) => isChordTone(n, chord));
+}
+
+/** Anchor a new arpeggio on the chord root nearest below the current note (or the lowest one). */
+function arpeggioBase(ladder: number[], chord: Chord, current: number): number {
+  const roots = ladder.filter((n) => pc(n) === chord.rootPc);
+  const below = roots.filter((n) => n <= current);
+  return below.at(-1) ?? roots[0] ?? ladder[0] ?? current;
+}
+
+/**
+ * Chord tone number `tone` above `base` on the ladder (0 = the base, 1 = next chord tone …).
+ * Past either end it folds back by an octave (3 rungs), so it always lands on a chord tone.
+ */
+export function arpeggioNote(ladder: number[], base: number, tone: number): number {
+  if (ladder.length === 0) return base;
+  let baseIndex = 0;
+  ladder.forEach((n, i) => {
+    if (n <= base) baseIndex = i;
+  });
+  let i = baseIndex + tone;
+  while (i >= ladder.length) i -= 3;
+  while (i < 0) i += 3;
+  return ladder[Math.max(0, Math.min(ladder.length - 1, i))] as number;
 }
 
 /**
@@ -189,20 +231,33 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
   let cellStart = startStep;
   let prevRole: string | undefined;
   for (const cell of cells) {
-    for (const hit of cell.hits) {
+    for (const hit of cell.hits as Hit[]) {
+      const step = cellStart + hit.offset;
+      const chord = chordAt(ctx.chords, step);
+      const strong = hit.accent || step % 4 === 0;
+      const chordChanged = state.chordStep !== chord.step;
+      state.chordStep = chord.step;
       let midi: number;
       switch (hit.role) {
         case 'root':
-          midi = ctx.root;
+          midi = pedalRoot(ctx.root, chord);
           state.passing = false;
           break;
         case 'move':
           midi =
-            ctx.profile.rootStay > 0 && ctx.rng.chance(ctx.profile.rootStay) ? ctx.root : pickMove(ctx, state.current);
+            ctx.profile.rootStay > 0 && ctx.rng.chance(ctx.profile.rootStay)
+              ? pedalRoot(ctx.root, chord)
+              : pickMove(ctx, state.current, chord, strong);
           state.passing = false;
           break;
         case 'hold':
-          midi = state.current;
+          // A held tremolo note that runs into a chord it doesn't belong to is re-picked.
+          if (chordChanged && !isChordTone(state.current, chord)) {
+            midi = pickMove(ctx, state.current, chord, true);
+            state.passing = false;
+          } else {
+            midi = state.current;
+          }
           break;
         case 'chrom': {
           // The direction draw happens either way, so the toggle changes only the run's pitches.
@@ -224,12 +279,15 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
           midi = state.previous;
           state.passing = !isInScale(midi, ctx.key, ctx.scale);
           break;
-        case 'leap':
-          midi = pickLeap(ctx, state);
+        case 'arp': {
+          const ladder = chordLadder(ctx.pool, chord);
+          if (prevRole !== 'arp') state.arpBase = arpeggioBase(ladder, chord, state.current);
+          midi = arpeggioNote(ladder, state.arpBase, hit.tone ?? 0);
           state.passing = false;
           break;
+        }
         case 'high':
-          midi = pickHigh(ctx, state.current);
+          midi = pickHigh(ctx, state.current, chord);
           state.passing = false;
           break;
       }
@@ -250,11 +308,11 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
   return out;
 }
 
-/** End the phrase on the root, or the ♭2 when the scale has one, so the riff loops cleanly. */
+/** End the phrase on the final chord's root (low register), so the riff lands on the harmony and loops. */
 function resolveEnding(notes: RawNote[], ctx: MelodyContext, fromStep: number): void {
   const last = notes.at(-1);
   if (!last) return;
-  const target = hasFlatTwo(ctx.scale) && ctx.rng.chance(0.35) ? ctx.root + 1 : ctx.root;
+  const target = pedalRoot(ctx.root, chordAt(ctx.chords, last.step));
   const tailPitch = last.midi;
   // Retune the trailing run of the last pitch (e.g. a whole tremolo group), within the variation only.
   for (let i = notes.length - 1; i >= 0; i--) {
@@ -287,7 +345,14 @@ export function generateGuitar1(ctx: MelodyContext, archetype: Archetype, bars: 
   const tailCells = fillCells(varLen, segmentStyle(archetype, ctx), ctx.rng, false, p);
   const variationCells = fillCells(varLen, segmentStyle(archetype, ctx), ctx.rng, false, p);
 
-  const state: MelodyState = { current: ctx.root, previous: ctx.root, passing: false, chromDir: -1, leapDir: 1 };
+  const state: MelodyState = {
+    current: ctx.root,
+    previous: ctx.root,
+    passing: false,
+    chromDir: -1,
+    arpBase: ctx.root,
+    chordStep: -1,
+  };
   const head = renderCells(headCells, 0, ctx, state);
   const afterHead = { ...state };
   const tail = renderCells(tailCells, headLen, ctx, state);

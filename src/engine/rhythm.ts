@@ -2,16 +2,17 @@ import type { Archetype } from './types.ts';
 
 /**
  * What pitch a hit takes:
- * - root:  the pedal tone (open low string)
- * - move:  a new scale note picked by the melody rules
+ * - root:  the pedal: the current chord's root in the low register
+ * - move:  a new scale note picked by the melody rules (favouring the current chord's tones)
  * - hold:  same pitch as the previous hit (tremolo)
  * - chrom: a run step: the next scale note in the run's direction (or the next semitone,
  *          a chromatic passing tone, when chromatic passing is switched on)
  * - back:  the pitch from two hits ago (trills: A B A B)
- * - leap:  a scale note at least a minor 3rd away, alternating direction (broken arpeggio)
- * - high:  a scale note from the upper part of the range (string skipping against the pedal)
+ * - arp:   chord tone number `tone` above the arpeggio's base (0 = root, 1 = 3rd, 2 = 5th,
+ *          3 = octave …; negative goes below). The base is set by the first arp hit in a row.
+ * - high:  a chord tone from the upper part of the range (string skipping against the pedal)
  */
-export type PitchRole = 'root' | 'move' | 'hold' | 'chrom' | 'back' | 'leap' | 'high';
+export type PitchRole = 'root' | 'move' | 'hold' | 'chrom' | 'back' | 'arp' | 'high';
 
 export type Hit = {
   offset: number;
@@ -19,6 +20,8 @@ export type Hit = {
   role: PitchRole;
   palmMute: boolean;
   accent: boolean;
+  /** Chord tone index for `arp` hits. */
+  tone?: number;
 };
 
 export type Cell = {
@@ -35,6 +38,21 @@ const h = (offset: number, duration: number, role: PitchRole, palmMute = false, 
   palmMute,
   accent,
 });
+
+/** An arpeggio hit: chord tone `tone` (0 root, 1 third, 2 fifth, 3 octave …). */
+const a = (offset: number, duration: number, tone: number, accent = false, palmMute = false): Hit => ({
+  offset,
+  duration,
+  role: 'arp',
+  palmMute,
+  accent,
+  tone,
+});
+
+/** 16th-note arpeggio over the given chord tones, accent on the first. */
+function arp16(id: string, tones: number[]): Cell {
+  return { id, length: tones.length, hits: tones.map((t, i) => a(i, 1, t, i === 0)) };
+}
 
 /** Builds steady 16ths: one pitch role per group of `group` notes, the rest held. */
 function tremolo(id: string, length: 4 | 8, group: number): Cell {
@@ -94,7 +112,24 @@ export const CELLS: Record<string, Cell> = {
     hits: [h(0, 1, 'move', false, true), ...[1, 2, 3, 4, 5, 6, 7].map((i) => h(i, 1, 'chrom', false, i === 4))],
   },
   trill: { id: 'trill', length: 4, hits: [h(0, 1, 'move', false, true), h(1, 1, 'move'), h(2, 1, 'back'), h(3, 1, 'back')] },
-  arpeggio: { id: 'arpeggio', length: 4, hits: [h(0, 1, 'move', false, true), h(1, 1, 'leap'), h(2, 1, 'leap'), h(3, 1, 'leap')] },
+  // Arpeggios over the current chord
+  arpeggio: arp16('arpeggio', [0, 1, 2, 1]), // 1-3-5-3
+  arpUp: arp16('arpUp', [0, 1, 2, 3]),
+  arpDown: arp16('arpDown', [3, 2, 1, 0]),
+  arpBroken: arp16('arpBroken', [0, 2, 1, 2]), // 1-5-3-5
+  arpRoll: arp16('arpRoll', [0, 1, 2, 3, 4, 3, 2, 1]), // up-and-down sweep
+  tremArp: { id: 'tremArp', length: 8, hits: [0, 0, 1, 1, 2, 2, 1, 1].map((t, i) => a(i, 1, t, i % 2 === 0)) },
+  tremArpBeat: { id: 'tremArpBeat', length: 8, hits: [0, 0, 0, 0, 2, 2, 2, 2].map((t, i) => a(i, 1, t, i % 4 === 0)) },
+  pedalArp: {
+    id: 'pedalArp',
+    length: 8,
+    hits: [h(0, 1, 'root', true, true), a(1, 1, 1, true), h(2, 1, 'root', true), a(3, 1, 2, true),
+      h(4, 1, 'root', true), a(5, 1, 3, true), h(6, 1, 'root', true), a(7, 1, 2)],
+  },
+  ringArp: { id: 'ringArp', length: 8, hits: [a(0, 2, 0, true), a(2, 2, 1), a(4, 4, 2, true)] },
+  g3Arp: arp16('g3Arp', [0, 1, 2]),
+  g5Arp: arp16('g5Arp', [0, 1, 2, 3, 2]),
+  g6Arp: arp16('g6Arp', [0, 1, 2, 3, 2, 1]),
   stringSkip: {
     id: 'stringSkip',
     length: 4,
@@ -129,15 +164,15 @@ export const CELLS: Record<string, Cell> = {
 export const GROUP_CELLS: Record<Archetype, Record<2 | 3 | 5 | 6, Weighted[]>> = {
   tremolo: {
     2: [['g2Trem', 3], ['g2Stab', 1]],
-    3: [['g3Trem', 4], ['g3Stab', 1]],
-    5: [['g5Trem', 3], ['g5Stab', 1]],
-    6: [['g6Trem', 4], ['g6Gallop', 1]],
+    3: [['g3Trem', 4], ['g3Arp', 3], ['g3Stab', 1]],
+    5: [['g5Trem', 3], ['g5Arp', 2], ['g5Stab', 1]],
+    6: [['g6Trem', 4], ['g6Arp', 3], ['g6Gallop', 1]],
   },
   gallop: {
     2: [['g2Chug', 3], ['g2Stab', 1]],
-    3: [['g3Gallop', 4], ['g3Chug', 2], ['g3Stab', 1]],
-    5: [['g5Chug', 3], ['g5Stab', 2]],
-    6: [['g6Gallop', 3], ['g6Dotted', 2]],
+    3: [['g3Gallop', 4], ['g3Arp', 2], ['g3Chug', 2], ['g3Stab', 1]],
+    5: [['g5Chug', 3], ['g5Arp', 2], ['g5Stab', 2]],
+    6: [['g6Gallop', 3], ['g6Arp', 2], ['g6Dotted', 2]],
   },
   chug: {
     2: [['g2Chug', 3], ['g2Stab', 1]],
@@ -157,10 +192,19 @@ export type Weighted = [cellId: string, weight: number];
 
 /** Which cells each archetype uses, with relative weights. Each pool has 4-step cells. */
 export const ARCHETYPE_CELLS: Record<Archetype, Weighted[]> = {
-  tremolo: [['tremoloBeat', 5], ['tremoloHalf', 4], ['tremoloLong', 3], ['tremoloRoot', 2], ['chromRun', 1]],
-  gallop: [['gallop', 5], ['gallopReverse', 2], ['gallopMove', 4], ['pedal', 3], ['pedalLong', 2], ['chromRun', 1]],
-  chug: [['chug8ths', 3], ['chug16ths', 3], ['chugSync', 4], ['chugDotted', 3], ['stab', 3], ['pedal', 2], ['chromRun', 1]],
-  breakdown: [['breakdownA', 4], ['breakdownB', 3], ['breakdownC', 3], ['ring', 2], ['chugSync', 2], ['rest', 1]],
+  tremolo: [
+    ['tremoloBeat', 4], ['tremoloHalf', 3], ['tremoloLong', 2], ['tremoloRoot', 2], ['chromRun', 1],
+    ['tremArp', 4], ['tremArpBeat', 3], ['arpUp', 2], ['arpDown', 1],
+  ],
+  gallop: [
+    ['gallop', 5], ['gallopReverse', 2], ['gallopMove', 4], ['pedal', 2], ['pedalLong', 2], ['chromRun', 1],
+    ['pedalArp', 4], ['arpUp', 2], ['arpDown', 1],
+  ],
+  chug: [
+    ['chug8ths', 3], ['chug16ths', 3], ['chugSync', 4], ['chugDotted', 3], ['stab', 2], ['pedal', 2], ['chromRun', 1],
+    ['pedalArp', 3], ['arpUp', 1],
+  ],
+  breakdown: [['breakdownA', 4], ['breakdownB', 3], ['breakdownC', 3], ['ring', 1], ['chugSync', 2], ['rest', 1], ['ringArp', 3]],
 };
 
 /** Archetype weights by tempo: fast songs lean on tremolo, slow ones on breakdowns. */

@@ -14,7 +14,19 @@ export type ScaleId =
 export type Archetype = 'tremolo' | 'gallop' | 'chug' | 'breakdown';
 
 /** What Guitar 2 plays. There is deliberately no unison: Guitar 2 always has its own part. */
-export type SecondGuitarMode = 'harmony' | 'counter' | 'octave';
+export type SecondGuitarMode = 'harmony' | 'counter' | 'octave' | 'arpeggio';
+
+/** A chord over a span of the riff (see harmony.ts). */
+export type ChordSlot = {
+  step: number;
+  length: number;
+  degree: number;
+  rootPc: number;
+  tones: number[];
+  quality: 'minor' | 'major' | 'diminished' | 'augmented';
+  roman: string;
+  name: string;
+};
 
 export type Bars = 1 | 2 | 4;
 
@@ -73,6 +85,8 @@ export type Riff = {
   archetype: Archetype;
   complexity: Complexity;
   chromaticPassing: boolean;
+  /** The chord progression under the riff: one half's chords, repeated in the second half. */
+  progression: ChordSlot[];
   tuning: Tuning;
   guitar1: NoteEvent[];
   guitar2: NoteEvent[];

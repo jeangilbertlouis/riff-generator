@@ -1,4 +1,5 @@
-import { BPM_MAX, BPM_MIN, DEFAULT_BARS, DEFAULT_BPM } from '../engine/generate.ts';
+import { BPM_MAX, BPM_MIN, DEFAULT_BPM } from '../engine/generate.ts';
+import { romanProgression } from '../engine/harmony.ts';
 import { randomSeed } from '../engine/random.ts';
 import { SCALES, SCALE_IDS } from '../engine/theory.ts';
 import {
@@ -36,8 +37,8 @@ export const COMPLEXITY_LABELS: Record<Complexity, string> = {
   extreme: 'Extreme',
 };
 
-/** The UI starts at Complex; the engine (and old share links) default to Normal. */
-export const DEFAULT_COMPLEXITY: Complexity = 'complex';
+/** The UI starts at Extreme; the engine (and old share links) default to Normal. */
+export const DEFAULT_COMPLEXITY: Complexity = 'extreme';
 
 export const STYLE_LABELS: Record<Archetype | 'auto', string> = {
   auto: 'Auto',
@@ -52,6 +53,7 @@ export const GUITAR2_LABELS: Record<SecondGuitarMode | 'auto', string> = {
   harmony: 'Harmony',
   counter: 'Counter-melody',
   octave: 'Octave',
+  arpeggio: 'Arpeggio',
 };
 
 export const BARS_OPTIONS: Bars[] = [1, 2, 4];
@@ -59,8 +61,8 @@ export const BARS_OPTIONS: Bars[] = [1, 2, 4];
 export function defaultSettings(seed = randomSeed()): Settings {
   return {
     key: 'E',
-    scale: 'phrygian',
-    bars: DEFAULT_BARS,
+    scale: 'harmonicMinor',
+    bars: 4,
     style: 'auto',
     guitar2Mode: 'auto',
     complexity: DEFAULT_COMPLEXITY,
@@ -105,6 +107,7 @@ export function describeRiff(riff: Riff): string {
   return [
     riff.tuning.name,
     `${COMPLEXITY_LABELS[riff.complexity]} ${STYLE_LABELS[riff.archetype].toLowerCase()} riff`,
+    romanProgression(riff.progression),
     `Guitar 2: ${GUITAR2_LABELS[riff.guitar2Mode].toLowerCase()}`,
     `${riff.bars} bar${riff.bars === 1 ? '' : 's'}`,
     ...(riff.chromaticPassing ? ['chromatic passing'] : []),

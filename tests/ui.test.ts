@@ -44,10 +44,10 @@ describe('parseSeed', () => {
 });
 
 describe('settings', () => {
-  it('defaults to E Phrygian, 180 BPM, 2 bars, auto style and Guitar 2, Complex, strict scale', () => {
+  it('defaults to E Harmonic Minor, 180 BPM, 4 bars, auto style and Guitar 2, Extreme, strict scale', () => {
     const s = defaultSettings(42);
     expect(s).toEqual({
-      key: 'E', scale: 'phrygian', bars: 2, style: 'auto', guitar2Mode: 'auto', complexity: 'complex',
+      key: 'E', scale: 'harmonicMinor', bars: 4, style: 'auto', guitar2Mode: 'auto', complexity: 'extreme',
       chromaticPassing: false, bpm: 180, seed: 42,
     });
   });
@@ -88,8 +88,9 @@ describe('settings', () => {
 
   it('describes what Auto resolved to', () => {
     const riff = generateRiff({ key: 'C', scale: 'phrygian', bpm: 180, bars: 1, seed: 3, style: 'chug', guitar2Mode: 'counter' });
-    expect(describeRiff(riff)).toBe('Drop C · Normal chug riff · Guitar 2: counter-melody · 1 bar');
+    // C Phrygian i – ♭vii: Cm then B♭m (B♭–D♭–F)
+    expect(describeRiff(riff)).toBe('Drop C · Normal chug riff · i – ♭vii · Guitar 2: counter-melody · 1 bar');
     const complex = generateRiff({ ...riff, complexity: 'extreme', style: 'tremolo', guitar2Mode: 'harmony' });
-    expect(describeRiff(complex)).toBe('Drop C · Extreme tremolo riff · Guitar 2: harmony · 1 bar');
+    expect(describeRiff(complex)).toBe('Drop C · Extreme tremolo riff · i – ♭vii · Guitar 2: harmony · 1 bar');
   });
 });
