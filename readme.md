@@ -225,12 +225,11 @@ the details.
 ### 4.6 The second guitar
 
 Guitar 1 always plays the generated riff. Guitar 2 is **derived** from Guitar 1,
-so the two parts fit together. Four modes (a dropdown, or "Auto" lets the
-archetype choose):
+so the two parts fit together. Three modes (a dropdown, or "Auto" lets the
+archetype choose). Unison was removed in §6.9: Guitar 2 always plays its own part.
 
 | Mode | What Guitar 2 plays | Fits best with |
 |------|---------------------|----------------|
-| **Unison** (double-track) | The same notes with a small timing/detune offset | Chugs, breakdowns |
 | **Harmony** | The same rhythm, each note moved up a diatonic 3rd (or 5th/4th) *inside the chosen scale* | Tremolo and melodic riffs |
 | **Counter-melody** | Sustained or tremolo notes over Guitar 1's chugs, chosen from the scale, moving against the bass line | Pedal-point and gallop riffs |
 | **Octave** | Guitar 1 one octave up, on the higher strings | Tremolo riffs |
@@ -1030,6 +1029,75 @@ for that scale.
   "chromatic passing" in the summary; off again, back to strict. The switch
   fits the settings grid, with no sideways scroll.
 
+### 6.9 Feedback: the G shortcut, and no unison
+
+**1. The G shortcut didn't generate.**
+
+- **Reproduced with real key presses:** G worked when the page itself had
+  focus, but did nothing after clicking any button, switch or slider,
+  including Generate itself, because focus stays on the clicked control.
+- **Cause:** the shortcut handler skipped all shortcuts whenever *any*
+  control had focus. That is right for text fields (G is a letter you're
+  typing), and for Space on a button or switch (Space presses it). It is
+  wrong for G and L on a button, switch or slider.
+- **Dropdowns have a related trap:** a letter key jumps to the first
+  matching option, so G on a focused dropdown would change Key to G or
+  Style to Gallop.
+- **Fix:**
+  - The decision moves into a pure, unit-tested function
+    (`shortcutFor` in `ui/shortcuts.ts`).
+  - Shortcuts are ignored only while typing in a text or number field.
+  - On buttons and switches, Space is left to the control; G and L still
+    work.
+  - A dropdown picked with the mouse hands focus back to the page after
+    the pick, so the next G or L reaches the app. A dropdown reached with
+    the keyboard keeps focus, so keyboard users can still type to jump
+    between options.
+
+**2. Guitar 2 should never play in unison.**
+
+- **Unison is removed** from the engine, the Guitar 2 dropdown and Auto.
+  Guitar 2 now always plays its own part: harmony, counter-melody or octave.
+- **Auto, per style:**
+
+  | Style | Before | After |
+  |-------|--------|-------|
+  | Tremolo | 70 % harmony, 30 % octave | unchanged |
+  | Gallop | 60 % counter, 40 % harmony | unchanged |
+  | Chug | always unison | **60 % counter-melody, 40 % harmony** (a lead line or harmonized chugs over the riff) |
+  | Breakdown | 60 % unison, 40 % counter | **60 % counter-melody, 40 % octave** |
+
+- **Old links** with `g2=unison` fall back to Auto (per-value fallback).
+- **Golden test:** it now hashes Guitar 1 and the style only. Guitar 2 is
+  generated after Guitar 1 and has changed on purpose, so Guitar 1 must
+  still be identical to the old engine. The fixture is regenerated from the
+  current engine *before* this change.
+
+**Verified:**
+
+- **157 tests pass. New ones:**
+  - 6 for the shortcut rules: G and L right after a button, switch or
+    slider (the reported bug); Space left to buttons and switches; nothing
+    while typing or on a keyboard-focused dropdown; modified and repeated
+    keys ignored.
+  - No riff in the 1,008-riff sweep has a Guitar 2 that doubles Guitar 1
+    note for note.
+  - Auto never picks unison for any style.
+  - Old `g2=unison` links fall back to Auto, and the dropdown offers only
+    Auto, Harmony, Counter-melody and Octave.
+- **In the browser, with real key presses:**
+  - G right after clicking Generate generates. That is the case that failed
+    before.
+  - G and L right after clicking Play generate (playback continues) and
+    toggle the loop.
+  - Space on the focused Play button stops playback exactly once.
+- **Dropdown focus** (simulated events, since native dropdown menus can't be
+  clicked by automation):
+  - a mouse pick returns focus to the page;
+  - a keyboard pick keeps focus on the dropdown.
+- **Auto on the old unison styles:** a Chug riff now gets harmony, and a
+  Breakdown riff a counter-melody.
+
 ---
 
 ## 7. Decisions
@@ -1042,7 +1110,7 @@ for that scale.
 | Q4 | Tab only, or tab plus standard notation? | **Tab only** (custom SVG) |
 | Q5 | Tuning | **Follows the key** (root = open low string) |
 | Q6 | MIDI / audio export | **MIDI export later**, as a polish item; no audio export |
-| Q7 | Default Guitar 2 mode | **Auto**: the archetype picks |
+| Q7 | Default Guitar 2 mode | **Auto**: the archetype picks; never unison (§6.9) |
 | Q8 | Count-in | **On by default** |
 
 ## 8. Open questions

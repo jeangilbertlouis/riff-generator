@@ -13,7 +13,8 @@ export type ScaleId =
 /** Riff archetype: decides which rhythm cells are used and the Guitar 2 default. */
 export type Archetype = 'tremolo' | 'gallop' | 'chug' | 'breakdown';
 
-export type SecondGuitarMode = 'unison' | 'harmony' | 'counter' | 'octave';
+/** What Guitar 2 plays. There is deliberately no unison: Guitar 2 always has its own part. */
+export type SecondGuitarMode = 'harmony' | 'counter' | 'octave';
 
 export type Bars = 1 | 2 | 4;
 

@@ -13,7 +13,7 @@ export type SecondGuitarContext = {
   profile?: ComplexityProfile;
 };
 
-/** What "Auto" resolves to for each archetype. */
+/** What "Auto" resolves to for each archetype. Never unison: Guitar 2 always plays its own part. */
 export function autoSecondGuitarMode(archetype: Archetype, rng: Rng): SecondGuitarMode {
   switch (archetype) {
     case 'tremolo':
@@ -21,16 +21,15 @@ export function autoSecondGuitarMode(archetype: Archetype, rng: Rng): SecondGuit
     case 'gallop':
       return rng.chance(0.6) ? 'counter' : 'harmony';
     case 'chug':
-      return 'unison';
+      // A lead line over the chugs, or the chugs harmonized.
+      return rng.chance(0.6) ? 'counter' : 'harmony';
     case 'breakdown':
-      return rng.chance(0.6) ? 'unison' : 'counter';
+      return rng.chance(0.6) ? 'counter' : 'octave';
   }
 }
 
 export function deriveGuitar2(g1: RawNote[], mode: SecondGuitarMode, ctx: SecondGuitarContext): RawNote[] {
   switch (mode) {
-    case 'unison':
-      return g1.map((n) => ({ ...n }));
     case 'octave':
       return g1.map((n) => ({ ...n, midi: n.midi + 12 }));
     case 'harmony':

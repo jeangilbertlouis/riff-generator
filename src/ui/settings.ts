@@ -49,7 +49,6 @@ export const STYLE_LABELS: Record<Archetype | 'auto', string> = {
 
 export const GUITAR2_LABELS: Record<SecondGuitarMode | 'auto', string> = {
   auto: 'Auto',
-  unison: 'Unison',
   harmony: 'Harmony',
   counter: 'Counter-melody',
   octave: 'Octave',

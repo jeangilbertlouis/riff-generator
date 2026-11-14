@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateRiff } from '../src/engine/generate.ts';
-import { defaultSettings, toGenerateOptions, type Settings } from '../src/ui/settings.ts';
+import { GUITAR2_OPTIONS, defaultSettings, toGenerateOptions, type Settings } from '../src/ui/settings.ts';
 import { fromQuery, toQuery } from '../src/ui/share.ts';
 
 const defaults = defaultSettings(999);
@@ -63,6 +63,11 @@ describe('share links', () => {
     for (const q of ['?seed=5', '?seed=5&chr=0', '?seed=5&chr=yes', '']) {
       expect(fromQuery(q, defaults).settings.chromaticPassing).toBe(false);
     }
+  });
+
+  it('an old link with g2=unison falls back to Auto (unison no longer exists)', () => {
+    expect(fromQuery('?seed=5&g2=unison', defaults).settings.guitar2Mode).toBe('auto');
+    expect(GUITAR2_OPTIONS.map((o) => o.value)).toEqual(['auto', 'harmony', 'counter', 'octave']);
   });
 
   it('carries complexity as cx', () => {

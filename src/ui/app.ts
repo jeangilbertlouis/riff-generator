@@ -8,6 +8,7 @@ import { SCALE_IDS } from '../engine/theory.ts';
 import { midiFileName, riffToMidi } from '../export/midi.ts';
 import { TabView } from '../tab/TabView.ts';
 import { fromQuery, toQuery } from './share.ts';
+import { focusInfo, shortcutFor } from './shortcuts.ts';
 import {
   BARS_OPTIONS,
   COMPLEXITY_OPTIONS,
@@ -43,11 +44,6 @@ function fillSelect(select: HTMLSelectElement, options: Option[], value: string)
     }),
   );
   select.value = value;
-}
-
-/** Keyboard shortcuts are for the page, not for fields or focused buttons (Space already presses those). */
-function isTypingTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && !!target.closest('input, select, textarea, button, [contenteditable="true"]');
 }
 
 export function mountApp(root: ParentNode = document): { player: Player; tabView: TabView } {
@@ -285,19 +281,30 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     volume.addEventListener('input', () => player.setVolume(g as GuitarId, Number(volume.value)));
   }
 
-  // Keyboard shortcuts.
+  // Keyboard shortcuts (the focus rules live in shortcutFor and are unit tested).
   document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || isTypingTarget(e.target)) return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      void player.toggle();
-    } else if (e.key === 'g' || e.key === 'G') {
-      generateNew();
-    } else if (e.key === 'l' || e.key === 'L') {
+    const action = shortcutFor(e, focusInfo(e.target));
+    if (!action) return;
+    e.preventDefault();
+    if (action === 'toggle-play') void player.toggle();
+    else if (action === 'generate') generateNew();
+    else {
       ui.loop.checked = !ui.loop.checked;
       player.setLoop(ui.loop.checked);
     }
   });
+
+  // A dropdown picked with the mouse hands focus back to the page, so G/L work right after.
+  // One reached with the keyboard keeps focus, so keyboard users can keep typing to choose.
+  for (const select of [ui.key, ui.scale, ui.bars, ui.style, ui.guitar2, ui.complexity]) {
+    let byPointer = false;
+    select.addEventListener('pointerdown', () => (byPointer = true));
+    select.addEventListener('keydown', () => (byPointer = false));
+    select.addEventListener('change', () => {
+      if (byPointer) select.blur();
+      byPointer = false;
+    });
+  }
 
   syncMixer();
   regenerate();

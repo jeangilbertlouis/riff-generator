@@ -14,7 +14,7 @@ import {
 } from '../src/engine/types.ts';
 
 const ARCHETYPES: Archetype[] = ['tremolo', 'gallop', 'chug', 'breakdown'];
-const MODES: SecondGuitarMode[] = ['unison', 'harmony', 'counter', 'octave'];
+const MODES: SecondGuitarMode[] = ['harmony', 'counter', 'octave'];
 const BARS: Bars[] = [1, 2, 4];
 
 /** A broad sweep of riffs: every key × scale × bars × complexity, across styles, modes and seeds. */
@@ -175,10 +175,22 @@ describe('Guitar 2 modes', () => {
     for (const m of MODES) expect(of(m).length).toBeGreaterThan(10);
   });
 
-  it('unison copies Guitar 1', () => {
-    for (const r of of('unison')) {
-      expect(r.guitar2.map((n) => n.midi)).toEqual(r.guitar1.map((n) => n.midi));
-      expect(rhythm(r.guitar2)).toEqual(rhythm(r.guitar1));
+  it('Guitar 2 never doubles Guitar 1 note for note (no unison), whatever the style or level', () => {
+    for (const r of RIFFS) {
+      expect(MODES).toContain(r.guitar2Mode);
+      const same =
+        r.guitar2.length === r.guitar1.length &&
+        r.guitar2.every((n, i) => n.step === r.guitar1[i]!.step && n.midi === r.guitar1[i]!.midi);
+      expect(same, `${r.key} ${r.scale} seed ${r.seed}`).toBe(false);
+    }
+  });
+
+  it('Auto never picks unison, for any style', () => {
+    for (const style of ARCHETYPES) {
+      for (let seed = 0; seed < 60; seed++) {
+        const r = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, seed, style });
+        expect(['harmony', 'counter', 'octave']).toContain(r.guitar2Mode);
+      }
     }
   });
 
