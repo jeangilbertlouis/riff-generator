@@ -11,6 +11,11 @@ describe('scale definitions match music theory', () => {
     ['locrian', [0, 1, 3, 5, 6, 8, 10]],
     ['naturalMinor', [0, 2, 3, 5, 7, 8, 10]],
     ['harmonicMinor', [0, 2, 3, 5, 7, 8, 11]],
+    ['locrianNat6', [0, 1, 3, 5, 6, 9, 10]],
+    ['ionianSharp5', [0, 2, 4, 5, 8, 9, 11]],
+    ['dorianSharp4', [0, 2, 3, 6, 7, 9, 10]],
+    ['lydianSharp2', [0, 3, 4, 6, 7, 9, 11]],
+    ['ultralocrian', [0, 1, 3, 4, 6, 8, 9]],
     ['diminished', [0, 1, 3, 4, 6, 7, 9, 10]],
     ['chromatic', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]],
   ] as const)('%s', (id, intervals) => {

@@ -274,8 +274,15 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
             if (state.current - 3 < ctx.root) state.chromDir = 1;
           }
           if (ctx.chromaticPassing) {
+            // Like a scale run, turn around at either end of Guitar 1's range rather than leave it.
+            const low = ctx.pool[0] ?? ctx.root;
+            const high = ctx.pool.at(-1) ?? low;
             midi = state.current + state.chromDir;
-            if (midi < ctx.root) midi = ctx.root;
+            if (midi > high || midi < low) {
+              state.chromDir = -state.chromDir;
+              midi = state.current + state.chromDir;
+            }
+            midi = Math.max(low, Math.min(high, midi));
             state.passing = !isInScale(midi, ctx.key, ctx.scale);
           } else {
             midi = scaleStep(ctx, state);

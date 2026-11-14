@@ -70,6 +70,16 @@ export const PROGRESSIONS: Record<ScaleId, { two: number[][]; four: number[][] }
   naturalMinor: { two: [[0, 5], [0, 6], [0, 3]], four: [[0, 5, 6, 0], [0, 3, 5, 6], [0, 6, 5, 4], [0, 5, 3, 4]] },
   // i ii° ♭III+ iv V ♭VI vii°
   harmonicMinor: { two: [[0, 4], [0, 5]], four: [[0, 3, 4, 0], [0, 5, 4, 0], [0, 6, 0, 4], [0, 5, 3, 4]] },
+  // Harmonic minor mode 2. i° ♭II+ ♭iii IV ♭V vi° ♭vii
+  locrianNat6: { two: [[0, 1], [0, 4]], four: [[0, 1, 4, 0], [0, 4, 1, 0], [0, 6, 4, 1], [0, 3, 1, 0]] },
+  // Mode 3. I+ ii III IV ♭vi° vi vii°
+  ionianSharp5: { two: [[0, 2], [0, 5]], four: [[0, 5, 2, 0], [0, 3, 2, 0], [0, 5, 3, 2]] },
+  // Mode 4 (Ukrainian Dorian). i II ♭III ♭v° v vi° ♭VII+
+  dorianSharp4: { two: [[0, 1], [0, 3]], four: [[0, 1, 4, 0], [0, 2, 1, 0], [0, 3, 1, 0], [0, 1, 6, 1]] },
+  // Mode 6. I ♭iii° iii ♭v° V+ vi VII
+  lydianSharp2: { two: [[0, 1], [0, 6]], four: [[0, 6, 5, 0], [0, 1, 6, 0], [0, 5, 4, 1]] },
+  // Mode 7. i° ♭ii ♭iii° III+ ♭v ♭VI VI
+  ultralocrian: { two: [[0, 1], [0, 5]], four: [[0, 5, 1, 0], [0, 1, 6, 0], [0, 3, 1, 0], [0, 6, 5, 1]] },
   // diminished triads; degrees 0/2/4/6 are the minor-third axis
   diminished: { two: [[0, 2], [0, 4]], four: [[0, 2, 4, 2], [0, 6, 4, 2], [0, 4, 2, 6]] },
   // minor triads; ♭II and tritone moves

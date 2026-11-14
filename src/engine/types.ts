@@ -7,6 +7,11 @@ export type ScaleId =
   | 'locrian'
   | 'naturalMinor'
   | 'harmonicMinor'
+  | 'locrianNat6'
+  | 'ionianSharp5'
+  | 'dorianSharp4'
+  | 'lydianSharp2'
+  | 'ultralocrian'
   | 'diminished'
   | 'chromatic';
 

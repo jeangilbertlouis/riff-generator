@@ -2099,6 +2099,78 @@ arpeggiate.
   - playback, regenerating while playing, and stopping all ran with no
     console errors.
 
+### 6.20 More modes of the harmonic minor scale
+
+**Request:** add more modes of the harmonic minor scale.
+
+**What exists:** Harmonic minor (mode 1) and Phrygian dominant (mode 5).
+
+**Plan:** add the other five modes. Intervals are in semitones from the key's
+root; the triads are the scale's own stacked thirds, worked out by the
+existing `chordOnDegree`.
+
+| Mode | Name | Intervals | Triads on each degree |
+|------|------|-----------|-----------------------|
+| 2 | Locrian ♮6 | 0 1 3 5 6 9 10 | i° ♭II+ ♭iii IV ♭V vi° ♭vii |
+| 3 | Ionian ♯5 | 0 2 4 5 8 9 11 | I+ ii III IV ♭vi° vi vii° |
+| 4 | Ukrainian Dorian (Dorian ♯4) | 0 2 3 6 7 9 10 | i II ♭III ♭v° v vi° ♭VII+ |
+| 6 | Lydian ♯2 | 0 3 4 6 7 9 11 | I ♭iii° iii ♭v° V+ vi VII |
+| 7 | Ultralocrian (Super-Locrian 𝄫7) | 0 1 3 4 6 8 9 | i° ♭ii ♭iii° III+ ♭v ♭VI VI |
+
+- **Progressions:** each mode gets its own two- and four-chord templates,
+  all starting on the tonic and leaning on that mode's colour chord (for
+  example ♭II+ in Locrian ♮6, II in Ukrainian Dorian, ♭ii in Ultralocrian).
+- **Labels:** each new mode's label names its mode number, for example
+  "Locrian ♮6 (harm. minor mode 2)". Phrygian dominant's label gains
+  "(harm. minor mode 5)". Links use the ids (`locrianNat6`, `ionianSharp5`,
+  `dorianSharp4`, `lydianSharp2`, `ultralocrian`), not the labels.
+- **Existing riffs are unchanged:** the existing scales and their
+  progressions don't change, so old links still play the same riffs. The
+  golden script keeps recording the original seven scales, so its 84 cases
+  stay comparable.
+- **Tests:**
+  - the intervals and some known triads;
+  - every template is valid;
+  - the existing sweeps (every scale × key: in scale, playable, MIDI, tab)
+    cover the new modes automatically.
+
+**Findings while building it:**
+
+- **The modes slot into the engine with no special cases.** Triads,
+  arpeggios, pedals, Guitar 2's thirds and runs all work from the scale's
+  intervals. A diminished tonic (Locrian ♮6, Ultralocrian) behaves like
+  Locrian's; an augmented tonic (Ionian ♯5) is a valid chord with its own
+  roman numeral (I+).
+- **The new scales exposed an existing bug in chromatic passing.** Adding
+  scales moved the test sweeps onto different seeds, and one Chromatic riff
+  then came out differently with passing on and off. The cause: a strict
+  run turned around at the top of Guitar 1's range, but a chromatic run
+  kept climbing past it. Chromatic runs now turn around at either end of
+  the range, as scale runs do.
+  - Only riffs with chromatic passing on (`chr=1`) change, and only when a
+    run reaches the edge of the range: 12 of 1,344 such riffs in a sweep
+    across the original scales. Default riffs, and the golden test, are
+    unchanged.
+- **The golden script now uses a fixed list of the original seven
+  scales.** With `SCALE_IDS`, every added scale would shift the seeds of
+  the recorded cases.
+- **Chord variety** (distinct chords used over 200 four-bar Extreme riffs
+  in E): 4–6 per mode, similar to the existing scales.
+
+**Verified:**
+
+- 264 tests pass, `tsc --noEmit` is clean, `vite build` succeeds, and the
+  golden fixture is unchanged.
+- In the browser, the Scale dropdown lists the five new modes after
+  Harmonic minor, and links carry their ids (for example
+  `scale=dorianSharp4`). Summaries show each mode's chords, for example:
+  - "i° – ♭V | ♭V – ♭II+" (Locrian ♮6);
+  - "I+ – IV – III" (Ionian ♯5);
+  - "i | ♭III – II" (Ukrainian Dorian);
+  - "i° – ♭VI – ♭ii – i°" (Ultralocrian).
+
+  Playback ran with no console errors.
+
 ---
 
 ## 7. Decisions

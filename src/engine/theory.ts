@@ -4,10 +4,16 @@ export type ScaleInfo = { name: string; intervals: readonly number[] };
 
 export const SCALES: Record<ScaleId, ScaleInfo> = {
   phrygian: { name: 'Phrygian', intervals: [0, 1, 3, 5, 7, 8, 10] },
-  phrygianDominant: { name: 'Phrygian dominant', intervals: [0, 1, 4, 5, 7, 8, 10] },
+  phrygianDominant: { name: 'Phrygian dominant (harm. minor mode 5)', intervals: [0, 1, 4, 5, 7, 8, 10] },
   locrian: { name: 'Locrian', intervals: [0, 1, 3, 5, 6, 8, 10] },
   naturalMinor: { name: 'Natural minor', intervals: [0, 2, 3, 5, 7, 8, 10] },
   harmonicMinor: { name: 'Harmonic minor', intervals: [0, 2, 3, 5, 7, 8, 11] },
+  // The other modes of harmonic minor (mode 5 is Phrygian dominant, above).
+  locrianNat6: { name: 'Locrian ♮6 (harm. minor mode 2)', intervals: [0, 1, 3, 5, 6, 9, 10] },
+  ionianSharp5: { name: 'Ionian ♯5 (harm. minor mode 3)', intervals: [0, 2, 4, 5, 8, 9, 11] },
+  dorianSharp4: { name: 'Ukrainian Dorian (harm. minor mode 4)', intervals: [0, 2, 3, 6, 7, 9, 10] },
+  lydianSharp2: { name: 'Lydian ♯2 (harm. minor mode 6)', intervals: [0, 3, 4, 6, 7, 9, 11] },
+  ultralocrian: { name: 'Ultralocrian (harm. minor mode 7)', intervals: [0, 1, 3, 4, 6, 8, 9] },
   diminished: { name: 'Diminished (half-whole)', intervals: [0, 1, 3, 4, 6, 7, 9, 10] },
   chromatic: { name: 'Chromatic', intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
 };
