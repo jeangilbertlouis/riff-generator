@@ -17,6 +17,9 @@ export type SecondGuitarMode = 'unison' | 'harmony' | 'counter' | 'octave';
 
 export type Bars = 1 | 2 | 4;
 
+export const COMPLEXITIES = ['simple', 'normal', 'complex', 'extreme'] as const;
+export type Complexity = (typeof COMPLEXITIES)[number];
+
 export type Tuning = {
   name: string;
   /** Open-string MIDI pitches, index 0 = string 1 (highest) … last = lowest string. */
@@ -48,6 +51,8 @@ export type GenerateOptions = {
   seed?: number;
   style?: Archetype | 'auto';
   guitar2Mode?: SecondGuitarMode | 'auto';
+  /** Defaults to 'normal', which reproduces riffs from before complexity existed. */
+  complexity?: Complexity;
 };
 
 export type Riff = {
@@ -60,6 +65,7 @@ export type Riff = {
   /** Number of 16th steps in the whole riff. */
   totalSteps: number;
   archetype: Archetype;
+  complexity: Complexity;
   tuning: Tuning;
   guitar1: NoteEvent[];
   guitar2: NoteEvent[];

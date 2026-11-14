@@ -1,3 +1,4 @@
+import { PROFILES, type ComplexityProfile, type CounterRhythm } from './complexity.ts';
 import type { Rng } from './random.ts';
 import type { RawNote } from './riff.ts';
 import { hasFlatTwo, isInScale, scaleNotesInRange, shiftByScaleSteps } from './theory.ts';
@@ -9,6 +10,7 @@ export type SecondGuitarContext = {
   rng: Rng;
   root: number;
   bars: Bars;
+  profile?: ComplexityProfile;
 };
 
 /** What "Auto" resolves to for each archetype. */
@@ -45,10 +47,22 @@ export function deriveGuitar2(g1: RawNote[], mode: SecondGuitarMode, ctx: Second
 function harmonize(g1: RawNote[], ctx: SecondGuitarContext): RawNote[] {
   const steps = ctx.scale === 'chromatic' ? 7 : ctx.rng.chance(0.75) ? 2 : 4;
   let lastInterval = ctx.scale === 'chromatic' ? 7 : steps === 2 ? 3 : 7;
+
+  // At higher complexity the interval changes per beat (3rds, 4ths, 5ths). The pattern is chosen
+  // for one half of the riff and reused for the other, so the harmony repeats with the riff.
+  let beatSteps: number[] | null = null;
+  const beatsPerHalf = (ctx.bars * 16) / 2 / 4;
+  if (ctx.profile?.harmonyVaries && ctx.scale !== 'chromatic') {
+    beatSteps = Array.from({ length: beatsPerHalf }, (_, i) =>
+      i === 0 ? steps : ctx.rng.weighted([2, 3, 4], (s) => (s === 2 ? 3 : 1.5)),
+    );
+  }
+
   return g1.map((n) => {
     let midi: number;
     if (isInScale(n.midi, ctx.key, ctx.scale)) {
-      midi = shiftByScaleSteps(n.midi, steps, ctx.key, ctx.scale);
+      const s = beatSteps ? (beatSteps[Math.floor(n.step / 4) % beatsPerHalf] as number) : steps;
+      midi = shiftByScaleSteps(n.midi, s, ctx.key, ctx.scale);
       lastInterval = midi - n.midi;
     } else {
       midi = n.midi + lastInterval;
@@ -57,8 +71,6 @@ function harmonize(g1: RawNote[], ctx: SecondGuitarContext): RawNote[] {
   });
 }
 
-type CounterRhythm = 'sustain' | 'halves' | 'tremolo';
-
 /**
  * A higher line over Guitar 1, one window per half bar. It repeats like Guitar 1
  * does (A then A′): for 2+ bars the second half copies the first, except its last window.
@@ -66,7 +78,7 @@ type CounterRhythm = 'sustain' | 'halves' | 'tremolo';
 function counterMelody(ctx: SecondGuitarContext): RawNote[] {
   const { rng } = ctx;
   const pool = scaleNotesInRange(ctx.key, ctx.scale, ctx.root + 12, ctx.root + 24);
-  const rhythm = rng.pick<CounterRhythm>(['sustain', 'halves', 'tremolo']);
+  const rhythm = rng.pick<CounterRhythm>((ctx.profile ?? PROFILES.normal).counterRhythms);
   const totalWindows = (ctx.bars * 16) / 8;
   let current = rng.pick(pool.filter((n) => n >= ctx.root + 15 && n <= ctx.root + 19).concat(ctx.root + 12));
 
@@ -99,6 +111,10 @@ function counterMelody(ctx: SecondGuitarContext): RawNote[] {
         for (let i = 0; i < 8; i++) out.push(note(i, 1, i % 4 === 0 ? nextPitch() : current, i === 0));
         return out;
       }
+      case 'eighths':
+        return [0, 2, 4, 6].map((o) => note(o, 2, nextPitch(), o === 0));
+      case 'threeThreeTwo':
+        return [note(0, 3, nextPitch(), true), note(3, 3, nextPitch(), true), note(6, 2, nextPitch(), false)];
     }
   };
 

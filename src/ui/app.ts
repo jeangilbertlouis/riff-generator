@@ -3,13 +3,14 @@ import { Player } from '../audio/player.ts';
 import type { CursorPosition } from '../audio/schedule.ts';
 import { generateRiff } from '../engine/generate.ts';
 import { randomSeed } from '../engine/random.ts';
-import { NOTE_NAMES, type Archetype, type Bars, type Riff, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
+import { COMPLEXITIES, NOTE_NAMES, type Archetype, type Bars, type Riff, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
 import { SCALE_IDS } from '../engine/theory.ts';
 import { midiFileName, riffToMidi } from '../export/midi.ts';
 import { TabView } from '../tab/TabView.ts';
 import { fromQuery, toQuery } from './share.ts';
 import {
   BARS_OPTIONS,
+  COMPLEXITY_OPTIONS,
   GUITAR2_LABELS,
   GUITAR2_OPTIONS,
   KEY_OPTIONS,
@@ -56,6 +57,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     bars: el<HTMLSelectElement>(root, '#bars'),
     style: el<HTMLSelectElement>(root, '#style'),
     guitar2: el<HTMLSelectElement>(root, '#guitar2'),
+    complexity: el<HTMLSelectElement>(root, '#complexity'),
     bpmRange: el<HTMLInputElement>(root, '#bpm-range'),
     bpmNumber: el<HTMLInputElement>(root, '#bpm-number'),
     seed: el<HTMLInputElement>(root, '#seed'),
@@ -86,6 +88,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   fillSelect(ui.bars, BARS_OPTIONS.map((b) => ({ value: String(b), label: String(b) })), String(settings.bars));
   fillSelect(ui.style, STYLE_OPTIONS, settings.style);
   fillSelect(ui.guitar2, GUITAR2_OPTIONS, settings.guitar2Mode);
+  fillSelect(ui.complexity, COMPLEXITY_OPTIONS, settings.complexity);
   showBpm(settings.bpm);
   ui.seed.value = String(settings.seed);
 
@@ -144,6 +147,10 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
   ui.guitar2.addEventListener('change', () => {
     settings.guitar2Mode =
       pickOption(ui.guitar2.value, Object.keys(GUITAR2_LABELS) as (SecondGuitarMode | 'auto')[]) ?? settings.guitar2Mode;
+    regenerate();
+  });
+  ui.complexity.addEventListener('change', () => {
+    settings.complexity = pickOption(ui.complexity.value, COMPLEXITIES) ?? settings.complexity;
     regenerate();
   });
 

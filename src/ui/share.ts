@@ -1,4 +1,4 @@
-import { NOTE_NAMES, type Archetype, type Bars, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
+import { COMPLEXITIES, NOTE_NAMES, type Archetype, type Bars, type ScaleId, type SecondGuitarMode } from '../engine/types.ts';
 import { SCALE_IDS } from '../engine/theory.ts';
 import { GUITAR2_LABELS, STYLE_LABELS, parseBpm, parseSeed, pickOption, type Settings } from './settings.ts';
 
@@ -15,6 +15,7 @@ export function toQuery({ settings: s, tempo }: ShareState): string {
     bars: String(s.bars),
     style: s.style,
     g2: s.guitar2Mode,
+    cx: s.complexity,
     bpm: String(s.bpm),
     seed: String(s.seed),
   });
@@ -35,6 +36,9 @@ export function fromQuery(query: string, defaults: Settings): ShareState {
     bars: (pickOption(get('bars'), ['1', '2', '4']) ? Number(get('bars')) : defaults.bars) as Bars,
     style: pickOption(get('style'), Object.keys(STYLE_LABELS) as (Archetype | 'auto')[]) ?? defaults.style,
     guitar2Mode: pickOption(get('g2'), Object.keys(GUITAR2_LABELS) as (SecondGuitarMode | 'auto')[]) ?? defaults.guitar2Mode,
+    // Links from before complexity existed carry a seed but no `cx`: they were made at Normal,
+    // so they open at Normal and still play the same riff.
+    complexity: pickOption(get('cx'), COMPLEXITIES) ?? (parseSeed(get('seed')) !== null ? 'normal' : defaults.complexity),
     bpm: p.has('bpm') ? parseBpm(get('bpm'), defaults.bpm) : defaults.bpm,
     seed: parseSeed(get('seed')) ?? defaults.seed,
   };

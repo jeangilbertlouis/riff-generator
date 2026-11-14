@@ -6,8 +6,11 @@ import type { Archetype } from './types.ts';
  * - move:  a new scale note picked by the melody rules
  * - hold:  same pitch as the previous hit (tremolo)
  * - chrom: one semitone from the previous hit (chromatic run, passing tone)
+ * - back:  the pitch from two hits ago (trills: A B A B)
+ * - leap:  a scale note at least a minor 3rd away, alternating direction (broken arpeggio)
+ * - high:  a scale note from the upper part of the range (string skipping against the pedal)
  */
-export type PitchRole = 'root' | 'move' | 'hold' | 'chrom';
+export type PitchRole = 'root' | 'move' | 'hold' | 'chrom' | 'back' | 'leap' | 'high';
 
 export type Hit = {
   offset: number;
@@ -19,8 +22,8 @@ export type Hit = {
 
 export type Cell = {
   id: string;
-  /** Length in 16th steps: 4 (one beat) or 8 (two beats). */
-  length: 4 | 8;
+  /** Length in 16th steps: 4 (one beat) or 8 (two beats); 2, 3, 5 and 6 for odd groupings. */
+  length: number;
   hits: Hit[];
 };
 
@@ -82,9 +85,74 @@ export const CELLS: Record<string, Cell> = {
 
   // Chromatic run
   chromRun: { id: 'chromRun', length: 4, hits: [h(0, 1, 'move', false, true), h(1, 1, 'chrom'), h(2, 1, 'chrom'), h(3, 1, 'chrom')] },
+
+  // Techniques (Complex / Extreme only)
+  chromRun8: {
+    id: 'chromRun8',
+    length: 8,
+    hits: [h(0, 1, 'move', false, true), ...[1, 2, 3, 4, 5, 6, 7].map((i) => h(i, 1, 'chrom', false, i === 4))],
+  },
+  trill: { id: 'trill', length: 4, hits: [h(0, 1, 'move', false, true), h(1, 1, 'move'), h(2, 1, 'back'), h(3, 1, 'back')] },
+  arpeggio: { id: 'arpeggio', length: 4, hits: [h(0, 1, 'move', false, true), h(1, 1, 'leap'), h(2, 1, 'leap'), h(3, 1, 'leap')] },
+  stringSkip: {
+    id: 'stringSkip',
+    length: 4,
+    hits: [h(0, 1, 'root', true, true), h(1, 1, 'high', false, true), h(2, 1, 'root', true), h(3, 1, 'high', false, true)],
+  },
+
+  // Odd-length groups for displaced phrasing; every group starts accented.
+  g2Chug: { id: 'g2Chug', length: 2, hits: [h(0, 1, 'root', true, true), h(1, 1, 'root', true)] },
+  g2Stab: { id: 'g2Stab', length: 2, hits: [h(0, 2, 'move', false, true)] },
+  g2Trem: { id: 'g2Trem', length: 2, hits: [h(0, 1, 'move', false, true), h(1, 1, 'hold')] },
+  g3Gallop: { id: 'g3Gallop', length: 3, hits: [h(0, 1, 'root', true, true), h(1, 1, 'root', true), h(2, 1, 'move', false, true)] },
+  g3Chug: { id: 'g3Chug', length: 3, hits: [h(0, 2, 'root', true, true), h(2, 1, 'root', true)] },
+  g3Stab: { id: 'g3Stab', length: 3, hits: [h(0, 3, 'move', false, true)] },
+  g3Trem: { id: 'g3Trem', length: 3, hits: [h(0, 1, 'move', false, true), h(1, 1, 'hold'), h(2, 1, 'hold')] },
+  g5Chug: {
+    id: 'g5Chug',
+    length: 5,
+    hits: [h(0, 1, 'root', true, true), h(1, 1, 'root', true), h(2, 1, 'move', false, true), h(3, 1, 'root', true), h(4, 1, 'root', true)],
+  },
+  g5Stab: { id: 'g5Stab', length: 5, hits: [h(0, 2, 'move', false, true), h(2, 1, 'root', true), h(3, 2, 'root', true)] },
+  g5Trem: { id: 'g5Trem', length: 5, hits: [0, 1, 2, 3, 4].map((i) => h(i, 1, i === 0 || i === 3 ? 'move' : 'hold', false, i === 0)) },
+  g6Dotted: { id: 'g6Dotted', length: 6, hits: [h(0, 2, 'root', true, true), h(3, 2, 'root', true, true)] },
+  g6Gallop: {
+    id: 'g6Gallop',
+    length: 6,
+    hits: [h(0, 2, 'root', true, true), h(2, 1, 'root', true), h(3, 2, 'move', false, true), h(5, 1, 'root', true)],
+  },
+  g6Trem: { id: 'g6Trem', length: 6, hits: [0, 1, 2, 3, 4, 5].map((i) => h(i, 1, i % 3 === 0 ? 'move' : 'hold', false, i % 3 === 0)) },
 };
 
-type Weighted = [cellId: string, weight: number];
+/** Cells for each odd group length, per style (tremolo riffs group tremolo notes; others group chugs). */
+export const GROUP_CELLS: Record<Archetype, Record<2 | 3 | 5 | 6, Weighted[]>> = {
+  tremolo: {
+    2: [['g2Trem', 3], ['g2Stab', 1]],
+    3: [['g3Trem', 4], ['g3Stab', 1]],
+    5: [['g5Trem', 3], ['g5Stab', 1]],
+    6: [['g6Trem', 4], ['g6Gallop', 1]],
+  },
+  gallop: {
+    2: [['g2Chug', 3], ['g2Stab', 1]],
+    3: [['g3Gallop', 4], ['g3Chug', 2], ['g3Stab', 1]],
+    5: [['g5Chug', 3], ['g5Stab', 2]],
+    6: [['g6Gallop', 3], ['g6Dotted', 2]],
+  },
+  chug: {
+    2: [['g2Chug', 3], ['g2Stab', 1]],
+    3: [['g3Chug', 4], ['g3Gallop', 2], ['g3Stab', 2]],
+    5: [['g5Chug', 3], ['g5Stab', 2]],
+    6: [['g6Dotted', 3], ['g6Gallop', 2]],
+  },
+  breakdown: {
+    2: [['g2Chug', 2], ['g2Stab', 2]],
+    3: [['g3Chug', 4], ['g3Stab', 3]],
+    5: [['g5Stab', 3], ['g5Chug', 1]],
+    6: [['g6Dotted', 4], ['g6Gallop', 1]],
+  },
+};
+
+export type Weighted = [cellId: string, weight: number];
 
 /** Which cells each archetype uses, with relative weights. Each pool has 4-step cells. */
 export const ARCHETYPE_CELLS: Record<Archetype, Weighted[]> = {

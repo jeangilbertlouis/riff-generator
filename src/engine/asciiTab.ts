@@ -32,7 +32,7 @@ export function formatPartTab(notes: NoteEvent[], tuning: Tuning, totalSteps: nu
 
 export function formatAsciiTab(riff: Riff): string {
   const header = `${riff.key} ${riff.scale}, ${riff.bpm} BPM, ${riff.bars} bar(s), ${riff.tuning.name}, ` +
-    `${riff.archetype}, G2 ${riff.guitar2Mode}, seed ${riff.seed}`;
+    `${riff.archetype}, ${riff.complexity}, G2 ${riff.guitar2Mode}, seed ${riff.seed}`;
   return [
     header,
     '',

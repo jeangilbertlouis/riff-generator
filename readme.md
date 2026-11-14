@@ -15,7 +15,7 @@ Requires Node 22.18+ (the `riff` script runs TypeScript directly).
 ```bash
 npm install
 npm test                                  # engine unit tests
-npm run riff -- E phrygian 200 2 1234     # print a riff as text tab: key scale bpm bars [seed]
+npm run riff -- E phrygian 200 2 1234 extreme   # print a riff as text tab: key scale bpm bars [seed|-] [complexity]
 npm run dev                               # the app at http://localhost:5173
 npm run build                             # static build in dist/
 ```
@@ -67,6 +67,7 @@ src/
     tuning.ts        # tunings, pitch → (string, fret) mapping
     rhythm.ts        # rhythmic cells (gallops, tremolo, pedal point, breakdown chugs)
     riff.ts          # generator: assembles cells + pitches into Guitar 1's part
+    complexity.ts    # complexity levels: profiles (range, leaps, cells, groupings, variation) and odd groupings
     second.ts        # derives Guitar 2's part from Guitar 1 (see §4.6)
     generate.ts      # generateRiff(options): validation + wiring, the engine's entry point
     asciiTab.ts      # text tab for debugging and the CLI preview
@@ -717,6 +718,123 @@ peaks of 0.73–0.85 and exactly silent mutes. Real-time playback and
 regenerating during playback ran with no console errors. **How it sounds
 still needs your ears.** Every value is in `TONE` (`audio/guitar.ts`) and
 `MASTER` / `GUITAR2_OFFSET` (`audio/player.ts`).
+
+### 6.6 Engine refinement: complexity
+
+**Feedback:** the riffs should be more complicated. A **Complexity** dropdown
+in the UI sets how far the generator goes.
+
+**Levels:**
+
+| Level | In short |
+|-------|----------|
+| **Simple** | Core cells only, stepwise melody in one octave, lots of pedal tone, no chromatic runs |
+| **Normal** | Exactly today's generator. Every existing seed and share link gives the same riff |
+| **Complex** (new default) | Odd groupings, style changes within a riff, wider and more dissonant melody, new techniques, a longer variation, a busier Guitar 2 |
+| **Extreme** | All of Complex, pushed further, and almost no repetition |
+
+**What complexity controls** (one `ComplexityProfile` per level in `engine/complexity.ts`):
+
+1. **Odd groupings (rhythmic displacement):** a span of 8 or 16 steps is split
+   into groups of 3, 5 or 6 steps instead of whole beats, for example
+   3+3+2, 3+5, 3+3+3+3+4, 5+5+6 or 6+6+4. Each group starts with an accent, so
+   the accents drift across the beat while the riff stays in 4/4. This is the
+   core of technical death metal phrasing.
+2. **New cells** (Complex and Extreme):
+   - groups of 2, 3, 5 and 6 steps for the groupings;
+   - a **trill** (two notes alternating);
+   - a **broken arpeggio** (leaps of 3 or more semitones, changing direction);
+   - a **string-skip** pedal (low root against high notes);
+   - an 8-note **chromatic run**.
+3. **Style changes within a riff:** the head, tail and variation segments may
+   each use a different style (for example tremolo into a gallop).
+4. **Melody:**
+   - **Range:** 12, 19, 22 and 24 semitones above the root, from Simple to
+     Extreme.
+   - **Leaps:** big intervals get more weight as complexity rises.
+   - **Dissonance:** the ♭2 and tritone get more weight.
+   - **Pedal tone:** fewer returns to the root.
+5. **Structure:** how much of A′ is new.
+
+   | Level | 1 bar | 2 bars | 4 bars |
+   |-------|-------|--------|--------|
+   | Simple / Normal | 4 steps | 8 steps | 8 steps |
+   | Complex | 4 steps | 8 steps | 16 steps |
+   | Extreme | 4 steps | 12 steps | 28 steps (only the opening beat repeats) |
+
+6. **Guitar 2:**
+   - **Harmony:** at Complex and above, the interval can change every beat
+     (3rds, 4ths, 5ths) instead of staying parallel.
+   - **Counter-melody:** gains 8th-note and 3+3+2 rhythms.
+
+**Compatibility:**
+
+- **The engine defaults to Normal**, and Normal draws random numbers in
+  exactly the same order as before. The new features only consume randomness
+  when their probability is above zero.
+- **A golden test** (`tests/fixtures/golden-riffs.json`) holds hashes of 84
+  riffs generated *before* this change, covering every key and scale. Normal
+  must reproduce all of them.
+- **The UI defaults to Complex.**
+- **Share links:** the new parameter is `cx`. An old link, which has a seed
+  but no `cx`, opens at Normal, so it still plays the riff it was made with.
+
+**Tests:**
+
+- All existing invariants (in scale, monophonic, playable tab, ending, A/A′
+  repeat, Guitar 2 modes) are swept across every complexity.
+- Averages over 200 seeds each must show that complexity is real:
+  - distinct pitches per riff rise from Simple to Extreme;
+  - more note starts fall off the beat at Complex and Extreme;
+  - Extreme repeats less of the riff.
+
+**Findings while building it:**
+
+- **Measured per level** (Guitar 1, 200 seeds each, E/C/A/D Phrygian, 2 bars):
+
+  | Level | Distinct pitches | Accents off the beat | Kinds of note length |
+  |-------|------------------|----------------------|----------------------|
+  | Simple | 3.0 | 28 % | 1.7 |
+  | Normal | 4.8 | 25 % | 1.6 |
+  | Complex | 6.1 | 49 % | 2.4 |
+  | Extreme | 6.7 | 53 % | 2.3 |
+
+- **12-step groupings.** At Extreme, A′ repeats only one beat, so on 2 bars
+  most material lives in 12-step stretches. With only 8- and 16-step
+  groupings, Extreme displaced *less* than Complex (46 % vs 49 %). Adding
+  12-step groupings (3+3+3+3, 5+5+2, 6+6, 3+3+2+4) and raising Extreme's
+  grouping chance from 0.70 to 0.85 fixed the order.
+- **Complex and Extreme mix styles,** so the style shown in the summary is
+  the riff's *main* style. Segments may switch, for example a tremolo riff
+  whose variation turns into displaced chugs.
+- **Old links with a bad seed.** An early version treated any link with a
+  `seed` parameter as an old one (opening at Normal), even when the seed was
+  invalid. Only a valid seed counts now; otherwise the default applies.
+- **Settings layout.** With six settings the last one wrapped onto a
+  full-width row. The settings row is now a CSS grid, so wrapped fields keep
+  their column width: 4 + 2 on desktop, 2 columns on a phone.
+- **Dev-server caching again.** Vite served a stale `generate.ts` (the
+  `COMPLEXITIES` usage without its import) from between two quick edits.
+  Touching the files fixed it. The build is not affected.
+
+**Verified:**
+
+- 125 tests pass. They include:
+  - the golden test: all 84 pre-complexity riffs reproduced at Normal;
+  - every invariant swept across the four levels (1,008 riffs);
+  - the level-ordering measurements above;
+  - grouping, cell and variation-length checks;
+  - share links with `cx`, including old links opening at Normal with the
+    same riff.
+- In the browser:
+  - the dropdown defaults to Complex;
+  - changing it keeps the seed, regenerates, and updates the summary
+    ("Extreme gallop riff …") and the link;
+  - the old link `…&seed=229265&tempo=100` opens at Normal as the same Chug
+    riff;
+  - no sideways page scroll at desktop or phone width;
+  - a Complex and an Extreme riff render through the audio player with no
+    NaNs (peaks 0.74–0.83) and export to MIDI.
 
 ---
 

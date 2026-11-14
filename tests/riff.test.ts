@@ -4,6 +4,7 @@ import { variationLength } from '../src/engine/riff.ts';
 import { SCALE_IDS, hasFlatTwo, isInScale, pc, pitchClassOf } from '../src/engine/theory.ts';
 import { MAX_FRET, rootMidi } from '../src/engine/tuning.ts';
 import {
+  COMPLEXITIES,
   NOTE_NAMES,
   type Archetype,
   type Bars,
@@ -16,18 +17,21 @@ const ARCHETYPES: Archetype[] = ['tremolo', 'gallop', 'chug', 'breakdown'];
 const MODES: SecondGuitarMode[] = ['unison', 'harmony', 'counter', 'octave'];
 const BARS: Bars[] = [1, 2, 4];
 
-/** A broad sweep of riffs: every key × scale × bars, across styles, modes and seeds. */
+/** A broad sweep of riffs: every key × scale × bars × complexity, across styles, modes and seeds. */
 function sweep(): Riff[] {
   const riffs: Riff[] = [];
   let seed = 1;
-  for (const key of NOTE_NAMES) {
-    for (const scale of SCALE_IDS) {
-      for (const bars of BARS) {
-        const style = ARCHETYPES[seed % ARCHETYPES.length] as Archetype;
-        const mode = seed % 5 === 0 ? 'auto' : (MODES[seed % MODES.length] as SecondGuitarMode);
-        riffs.push(generateRiff({ key, scale, bpm: 60 + (seed * 37) % 200, bars, seed, style, guitar2Mode: mode }));
-        riffs.push(generateRiff({ key, scale, bpm: 180, bars, seed: seed * 7919 }));
-        seed++;
+  for (const complexity of COMPLEXITIES) {
+    for (const key of NOTE_NAMES) {
+      for (const scale of SCALE_IDS) {
+        for (const bars of BARS) {
+          const style = ARCHETYPES[seed % ARCHETYPES.length] as Archetype;
+          const mode = seed % 5 === 0 ? 'auto' : (MODES[seed % MODES.length] as SecondGuitarMode);
+          const bpm = 60 + ((seed * 37) % 200);
+          riffs.push(generateRiff({ key, scale, bpm, bars, seed, style, guitar2Mode: mode, complexity }));
+          riffs.push(generateRiff({ key, scale, bpm: 180, bars, seed: seed * 7919, complexity }));
+          seed++;
+        }
       }
     }
   }
@@ -132,7 +136,7 @@ describe('generateRiff', () => {
   it('repeats phrase A in A′ up to the variation', () => {
     for (const r of RIFFS) {
       const half = r.totalSteps / 2;
-      const headLen = half - variationLength(r.bars);
+      const headLen = half - variationLength(r.bars, r.complexity);
       const strip = ({ step, duration, midi, palmMute, accent }: NoteEvent) => ({ step, duration, midi, palmMute, accent });
       const a = r.guitar1.filter((n) => n.step < headLen).map(strip);
       const aPrime = r.guitar1

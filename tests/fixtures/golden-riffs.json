@@ -1,0 +1,677 @@
+{
+ "note": "Riffs from before complexity existed; Normal must reproduce them exactly.",
+ "cases": [
+  {
+   "key": "C",
+   "scale": "phrygian",
+   "bpm": 67,
+   "bars": 4,
+   "seed": 11,
+   "hash": "d8ae3c2b7f3376b8"
+  },
+  {
+   "key": "C",
+   "scale": "phrygianDominant",
+   "bpm": 70,
+   "bars": 2,
+   "seed": 7930,
+   "hash": "0af18b0c8a04d614"
+  },
+  {
+   "key": "C",
+   "scale": "locrian",
+   "bpm": 73,
+   "bars": 1,
+   "seed": 15849,
+   "hash": "d7e265751fbcee36"
+  },
+  {
+   "key": "C",
+   "scale": "naturalMinor",
+   "bpm": 76,
+   "bars": 4,
+   "seed": 23768,
+   "hash": "7080d65742f52ccb"
+  },
+  {
+   "key": "C",
+   "scale": "harmonicMinor",
+   "bpm": 79,
+   "bars": 2,
+   "seed": 31687,
+   "hash": "e378ebe076a8682c"
+  },
+  {
+   "key": "C",
+   "scale": "diminished",
+   "bpm": 82,
+   "bars": 1,
+   "seed": 39606,
+   "hash": "6c3eda5ff3dad235"
+  },
+  {
+   "key": "C",
+   "scale": "chromatic",
+   "bpm": 85,
+   "bars": 4,
+   "seed": 47525,
+   "hash": "a95949a86193e3a5"
+  },
+  {
+   "key": "C#",
+   "scale": "phrygian",
+   "bpm": 88,
+   "bars": 2,
+   "seed": 55444,
+   "hash": "f47bf309af6069c3"
+  },
+  {
+   "key": "C#",
+   "scale": "phrygianDominant",
+   "bpm": 91,
+   "bars": 1,
+   "seed": 63363,
+   "hash": "f53365fcf9046e8d"
+  },
+  {
+   "key": "C#",
+   "scale": "locrian",
+   "bpm": 94,
+   "bars": 4,
+   "seed": 71282,
+   "hash": "9c2676f641e038b1"
+  },
+  {
+   "key": "C#",
+   "scale": "naturalMinor",
+   "bpm": 97,
+   "bars": 2,
+   "seed": 79201,
+   "hash": "978f397e4b6f78af"
+  },
+  {
+   "key": "C#",
+   "scale": "harmonicMinor",
+   "bpm": 100,
+   "bars": 1,
+   "seed": 87120,
+   "hash": "3ab526c63e9ebb3a"
+  },
+  {
+   "key": "C#",
+   "scale": "diminished",
+   "bpm": 103,
+   "bars": 4,
+   "seed": 95039,
+   "hash": "c9c19a4f843f27f5"
+  },
+  {
+   "key": "C#",
+   "scale": "chromatic",
+   "bpm": 106,
+   "bars": 2,
+   "seed": 102958,
+   "hash": "81d242de4962453f"
+  },
+  {
+   "key": "D",
+   "scale": "phrygian",
+   "bpm": 109,
+   "bars": 1,
+   "seed": 110877,
+   "hash": "a6202a94407d9297"
+  },
+  {
+   "key": "D",
+   "scale": "phrygianDominant",
+   "bpm": 112,
+   "bars": 4,
+   "seed": 118796,
+   "hash": "4da5809eaf081824"
+  },
+  {
+   "key": "D",
+   "scale": "locrian",
+   "bpm": 115,
+   "bars": 2,
+   "seed": 126715,
+   "hash": "e418876e7735e806"
+  },
+  {
+   "key": "D",
+   "scale": "naturalMinor",
+   "bpm": 118,
+   "bars": 1,
+   "seed": 134634,
+   "hash": "6371a5c38a969298"
+  },
+  {
+   "key": "D",
+   "scale": "harmonicMinor",
+   "bpm": 121,
+   "bars": 4,
+   "seed": 142553,
+   "hash": "f25f2e9b9b2de852"
+  },
+  {
+   "key": "D",
+   "scale": "diminished",
+   "bpm": 124,
+   "bars": 2,
+   "seed": 150472,
+   "hash": "6146ad2be3837ffe"
+  },
+  {
+   "key": "D",
+   "scale": "chromatic",
+   "bpm": 127,
+   "bars": 1,
+   "seed": 158391,
+   "hash": "5061db7ae7e57567"
+  },
+  {
+   "key": "D#",
+   "scale": "phrygian",
+   "bpm": 130,
+   "bars": 4,
+   "seed": 166310,
+   "hash": "149d5e1421c95142"
+  },
+  {
+   "key": "D#",
+   "scale": "phrygianDominant",
+   "bpm": 133,
+   "bars": 2,
+   "seed": 174229,
+   "hash": "e41fd69c34d05e6b"
+  },
+  {
+   "key": "D#",
+   "scale": "locrian",
+   "bpm": 136,
+   "bars": 1,
+   "seed": 182148,
+   "hash": "7c080a804b9ee505"
+  },
+  {
+   "key": "D#",
+   "scale": "naturalMinor",
+   "bpm": 139,
+   "bars": 4,
+   "seed": 190067,
+   "hash": "22f77f1658aa092d"
+  },
+  {
+   "key": "D#",
+   "scale": "harmonicMinor",
+   "bpm": 142,
+   "bars": 2,
+   "seed": 197986,
+   "hash": "f65aaaa839c31ab8"
+  },
+  {
+   "key": "D#",
+   "scale": "diminished",
+   "bpm": 145,
+   "bars": 1,
+   "seed": 205905,
+   "hash": "7c080a804b9ee505"
+  },
+  {
+   "key": "D#",
+   "scale": "chromatic",
+   "bpm": 148,
+   "bars": 4,
+   "seed": 213824,
+   "hash": "c5ec111b0e1a7f7e"
+  },
+  {
+   "key": "E",
+   "scale": "phrygian",
+   "bpm": 151,
+   "bars": 2,
+   "seed": 221743,
+   "hash": "4085820204c95132"
+  },
+  {
+   "key": "E",
+   "scale": "phrygianDominant",
+   "bpm": 154,
+   "bars": 1,
+   "seed": 229662,
+   "hash": "d8d49a3df80f2c4f"
+  },
+  {
+   "key": "E",
+   "scale": "locrian",
+   "bpm": 157,
+   "bars": 4,
+   "seed": 237581,
+   "hash": "bf69c0881a98ee20"
+  },
+  {
+   "key": "E",
+   "scale": "naturalMinor",
+   "bpm": 160,
+   "bars": 2,
+   "seed": 245500,
+   "hash": "1047cee849080756"
+  },
+  {
+   "key": "E",
+   "scale": "harmonicMinor",
+   "bpm": 163,
+   "bars": 1,
+   "seed": 253419,
+   "hash": "1560f100a71c758e"
+  },
+  {
+   "key": "E",
+   "scale": "diminished",
+   "bpm": 166,
+   "bars": 4,
+   "seed": 261338,
+   "hash": "d7279bbd45e092d4"
+  },
+  {
+   "key": "E",
+   "scale": "chromatic",
+   "bpm": 169,
+   "bars": 2,
+   "seed": 269257,
+   "hash": "18684327958876eb"
+  },
+  {
+   "key": "F",
+   "scale": "phrygian",
+   "bpm": 172,
+   "bars": 1,
+   "seed": 277176,
+   "hash": "8b9e774a8a166dfc"
+  },
+  {
+   "key": "F",
+   "scale": "phrygianDominant",
+   "bpm": 175,
+   "bars": 4,
+   "seed": 285095,
+   "hash": "4cbefa07ab537f92"
+  },
+  {
+   "key": "F",
+   "scale": "locrian",
+   "bpm": 178,
+   "bars": 2,
+   "seed": 293014,
+   "hash": "ae3e9dbe22ea4c9a"
+  },
+  {
+   "key": "F",
+   "scale": "naturalMinor",
+   "bpm": 181,
+   "bars": 1,
+   "seed": 300933,
+   "hash": "1876d56b5e9457f0"
+  },
+  {
+   "key": "F",
+   "scale": "harmonicMinor",
+   "bpm": 184,
+   "bars": 4,
+   "seed": 308852,
+   "hash": "a5c96bd8b2ad043f"
+  },
+  {
+   "key": "F",
+   "scale": "diminished",
+   "bpm": 187,
+   "bars": 2,
+   "seed": 316771,
+   "hash": "d40040960c71cdad"
+  },
+  {
+   "key": "F",
+   "scale": "chromatic",
+   "bpm": 190,
+   "bars": 1,
+   "seed": 324690,
+   "hash": "8d5ebcb521bb5b16"
+  },
+  {
+   "key": "F#",
+   "scale": "phrygian",
+   "bpm": 193,
+   "bars": 4,
+   "seed": 332609,
+   "hash": "fef5cebe064e3e29"
+  },
+  {
+   "key": "F#",
+   "scale": "phrygianDominant",
+   "bpm": 196,
+   "bars": 2,
+   "seed": 340528,
+   "hash": "6b593fd7aafc8077"
+  },
+  {
+   "key": "F#",
+   "scale": "locrian",
+   "bpm": 199,
+   "bars": 1,
+   "seed": 348447,
+   "hash": "577391085c55d990"
+  },
+  {
+   "key": "F#",
+   "scale": "naturalMinor",
+   "bpm": 202,
+   "bars": 4,
+   "seed": 356366,
+   "hash": "e0929a400dee8bfa"
+  },
+  {
+   "key": "F#",
+   "scale": "harmonicMinor",
+   "bpm": 205,
+   "bars": 2,
+   "seed": 364285,
+   "hash": "f91eeca8cce7a7f4"
+  },
+  {
+   "key": "F#",
+   "scale": "diminished",
+   "bpm": 208,
+   "bars": 1,
+   "seed": 372204,
+   "hash": "e4a82970a1e5c981"
+  },
+  {
+   "key": "F#",
+   "scale": "chromatic",
+   "bpm": 211,
+   "bars": 4,
+   "seed": 380123,
+   "hash": "73c88ed590bff0e9"
+  },
+  {
+   "key": "G",
+   "scale": "phrygian",
+   "bpm": 214,
+   "bars": 2,
+   "seed": 388042,
+   "hash": "5c6888bab3e22277"
+  },
+  {
+   "key": "G",
+   "scale": "phrygianDominant",
+   "bpm": 217,
+   "bars": 1,
+   "seed": 395961,
+   "hash": "bb74840d7d366a9d"
+  },
+  {
+   "key": "G",
+   "scale": "locrian",
+   "bpm": 220,
+   "bars": 4,
+   "seed": 403880,
+   "hash": "2ddc24f641e717ce"
+  },
+  {
+   "key": "G",
+   "scale": "naturalMinor",
+   "bpm": 223,
+   "bars": 2,
+   "seed": 411799,
+   "hash": "9650cfc57803844e"
+  },
+  {
+   "key": "G",
+   "scale": "harmonicMinor",
+   "bpm": 226,
+   "bars": 1,
+   "seed": 419718,
+   "hash": "00fc2b552e553271"
+  },
+  {
+   "key": "G",
+   "scale": "diminished",
+   "bpm": 229,
+   "bars": 4,
+   "seed": 427637,
+   "hash": "b2bd4f40010b7623"
+  },
+  {
+   "key": "G",
+   "scale": "chromatic",
+   "bpm": 232,
+   "bars": 2,
+   "seed": 435556,
+   "hash": "aeaa54d2a2fc28ab"
+  },
+  {
+   "key": "G#",
+   "scale": "phrygian",
+   "bpm": 235,
+   "bars": 1,
+   "seed": 443475,
+   "hash": "1797049eaf4461e5"
+  },
+  {
+   "key": "G#",
+   "scale": "phrygianDominant",
+   "bpm": 238,
+   "bars": 4,
+   "seed": 451394,
+   "hash": "9e3f2c975a409368"
+  },
+  {
+   "key": "G#",
+   "scale": "locrian",
+   "bpm": 241,
+   "bars": 2,
+   "seed": 459313,
+   "hash": "97d1af4bd3dc5edb"
+  },
+  {
+   "key": "G#",
+   "scale": "naturalMinor",
+   "bpm": 244,
+   "bars": 1,
+   "seed": 467232,
+   "hash": "81060e00f2da5f37"
+  },
+  {
+   "key": "G#",
+   "scale": "harmonicMinor",
+   "bpm": 247,
+   "bars": 4,
+   "seed": 475151,
+   "hash": "7c22d0e91bc1a973"
+  },
+  {
+   "key": "G#",
+   "scale": "diminished",
+   "bpm": 250,
+   "bars": 2,
+   "seed": 483070,
+   "hash": "961c24971c7d53cd"
+  },
+  {
+   "key": "G#",
+   "scale": "chromatic",
+   "bpm": 253,
+   "bars": 1,
+   "seed": 490989,
+   "hash": "e6e4211850ac35c1"
+  },
+  {
+   "key": "A",
+   "scale": "phrygian",
+   "bpm": 256,
+   "bars": 4,
+   "seed": 498908,
+   "hash": "13aff0bbbfd7a622"
+  },
+  {
+   "key": "A",
+   "scale": "phrygianDominant",
+   "bpm": 259,
+   "bars": 2,
+   "seed": 506827,
+   "hash": "f440d9666a8de31b"
+  },
+  {
+   "key": "A",
+   "scale": "locrian",
+   "bpm": 62,
+   "bars": 1,
+   "seed": 514746,
+   "hash": "e2bcb1ba215d4e1b"
+  },
+  {
+   "key": "A",
+   "scale": "naturalMinor",
+   "bpm": 65,
+   "bars": 4,
+   "seed": 522665,
+   "hash": "b7c0472c50d25726"
+  },
+  {
+   "key": "A",
+   "scale": "harmonicMinor",
+   "bpm": 68,
+   "bars": 2,
+   "seed": 530584,
+   "hash": "e28b9268378e669a"
+  },
+  {
+   "key": "A",
+   "scale": "diminished",
+   "bpm": 71,
+   "bars": 1,
+   "seed": 538503,
+   "hash": "de0607e1cac555a9"
+  },
+  {
+   "key": "A",
+   "scale": "chromatic",
+   "bpm": 74,
+   "bars": 4,
+   "seed": 546422,
+   "hash": "c9da83dd4a8f18a4"
+  },
+  {
+   "key": "A#",
+   "scale": "phrygian",
+   "bpm": 77,
+   "bars": 2,
+   "seed": 554341,
+   "hash": "93aa71dbf4a0958d"
+  },
+  {
+   "key": "A#",
+   "scale": "phrygianDominant",
+   "bpm": 80,
+   "bars": 1,
+   "seed": 562260,
+   "hash": "19ab226ed6d9f2e7"
+  },
+  {
+   "key": "A#",
+   "scale": "locrian",
+   "bpm": 83,
+   "bars": 4,
+   "seed": 570179,
+   "hash": "ec7ad6d337ff49ad"
+  },
+  {
+   "key": "A#",
+   "scale": "naturalMinor",
+   "bpm": 86,
+   "bars": 2,
+   "seed": 578098,
+   "hash": "79c293752b3df76f"
+  },
+  {
+   "key": "A#",
+   "scale": "harmonicMinor",
+   "bpm": 89,
+   "bars": 1,
+   "seed": 586017,
+   "hash": "dcc75fdf702ad48d"
+  },
+  {
+   "key": "A#",
+   "scale": "diminished",
+   "bpm": 92,
+   "bars": 4,
+   "seed": 593936,
+   "hash": "a7b3a805699a98bf"
+  },
+  {
+   "key": "A#",
+   "scale": "chromatic",
+   "bpm": 95,
+   "bars": 2,
+   "seed": 601855,
+   "hash": "4cc1990920c95736"
+  },
+  {
+   "key": "B",
+   "scale": "phrygian",
+   "bpm": 98,
+   "bars": 1,
+   "seed": 609774,
+   "hash": "928bcf56ecac3e40"
+  },
+  {
+   "key": "B",
+   "scale": "phrygianDominant",
+   "bpm": 101,
+   "bars": 4,
+   "seed": 617693,
+   "hash": "ba4d3af28b89ae84"
+  },
+  {
+   "key": "B",
+   "scale": "locrian",
+   "bpm": 104,
+   "bars": 2,
+   "seed": 625612,
+   "hash": "9a840312c9d516c3"
+  },
+  {
+   "key": "B",
+   "scale": "naturalMinor",
+   "bpm": 107,
+   "bars": 1,
+   "seed": 633531,
+   "hash": "87f208d6d90542db"
+  },
+  {
+   "key": "B",
+   "scale": "harmonicMinor",
+   "bpm": 110,
+   "bars": 4,
+   "seed": 641450,
+   "hash": "ec85dd0dfb1dbdc1"
+  },
+  {
+   "key": "B",
+   "scale": "diminished",
+   "bpm": 113,
+   "bars": 2,
+   "seed": 649369,
+   "hash": "c23e49e2fd89e49b"
+  },
+  {
+   "key": "B",
+   "scale": "chromatic",
+   "bpm": 116,
+   "bars": 1,
+   "seed": 657288,
+   "hash": "03c5755013e65ddf"
+  }
+ ]
+}
