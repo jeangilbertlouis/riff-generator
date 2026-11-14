@@ -29,7 +29,7 @@ npm run build                             # static build in dist/
 | R1 | Generate death metal riffs at random | Each riff is new; a seed makes a riff reproducible |
 | R2 | Choose the **key** | Root note E, F, F#, G, … D#. Tuning follows from it (see §4.3) |
 | R3 | Choose the **scale** | List of scales in §4.2 |
-| R4 | Choose the **BPM** | Range 60–260; the default is 180 |
+| R4 | Choose the **BPM** | Range 60–260; the default is 180. Riff length: 1, 2, 4 or 8 bars (§6.17) |
 | R5 | **Play back** the riff | In the app, with play/stop and loop |
 | R6 | Exactly **two instruments** | **Two guitars**, no bass. A simple drum beat was added to playback later (§6.12) |
 | R7 | Show **guitar tablature** | Tab for both guitars, kept in step with playback, with a cursor on the current note |
@@ -1753,6 +1753,88 @@ randomness, so riffs don't change):
   stop raised no errors.
 - **Not verified:** how the pad sounds. The values are in `PAD`
   (`audio/pad.ts`).
+
+### 6.17 8-bar riffs
+
+**Request:** generate 8-bar riffs too. In 8-bar mode, chords must never
+change within a bar.
+
+**Plan:**
+
+- **Bars: 1, 2, 4 or 8.** The structure stays A (4 bars) then A′ (4 bars).
+- **Chords change only on bar lines** in 8-bar mode: every chord starts on a
+  bar line and lasts whole bars. With 64 steps per half, the existing
+  options give:
+
+  | Chord changes | 8-bar chords |
+  |---------------|--------------|
+  | Steady | 4 per half (one per bar); Simple: 2 per half (two bars each) |
+  | Longer chords | 4 bars + 2 + 2 (a quarter of the riff is 2 bars), in any order |
+  | Repeat on new chord | 2 per half (two bars each), moved to new chords in A′ |
+
+  All of these fall on bar lines by construction. A test also asserts it
+  for every 8-bar riff.
+- **How much of A′ is new** (the variation):
+
+  | Level | 8 bars |
+  |-------|--------|
+  | Simple, Normal | 1 bar |
+  | Complex | 2 bars |
+  | Extreme | everything except the opening beat (60 steps) |
+
+  Normal stays close to the shorter riffs' feel (one changed bar out of
+  four), and the higher levels repeat less.
+- **Everything else already works per bar or per step:** the drums (a kick
+  on beat 1 of every bar, a crash at each half), the synth pad, Guitar 2,
+  MIDI, and the tab. The tab wraps 8 bars into balanced rows (for example
+  3 + 3 + 2, or 4 + 4).
+- **UI and links:** the Bars dropdown gains 8, and links accept `bars=8`.
+
+**Tests:**
+
+- The main invariant sweep includes 8 bars: in scale, monophonic, playable,
+  ending, A/A′, Guitar 2 modes, chord coverage.
+- **Every chord in every 8-bar riff** (all options, levels and keys) starts
+  on a bar line and lasts whole bars.
+- Variation lengths, the drums' bar-1 kick, the pad covering the chords, the
+  tab layout for 8 bars, and links.
+
+**Findings while building it:**
+
+- **A bug from §6.15, found by the 8-bar sweep.** A pedal note **held across
+  a chord change** (a tremolo on C♯, the root of C♯m, continuing into F♯m,
+  where C♯ is a chord tone) kept its "pedal" mark. When A′ copied it, the
+  mark re-rooted it to F♯, so **A′ no longer repeated A even in Steady**.
+  - **Fix:** a held note stays a pedal only under the same chord.
+  - **Guard:** a new regression test requires Steady's A′ to repeat A
+    exactly (2, 4 and 8 bars, every level and key). It **fails** with the
+    old line and passes with the fix.
+  - **Golden test:** unaffected; none of its cases hit this.
+- **Test timeouts.** The larger sweeps (now with 8-bar riffs) pushed one test
+  close to Vitest's 5-second default under a parallel full run: it failed
+  once and passed alone in 3.9 s. `vitest.config.ts` now sets a 30-second
+  per-test limit. Two consecutive full runs passed (about 8 s each).
+
+**Verified:**
+
+- **235 tests pass. New ones cover:**
+  - every chord of every 8-bar riff (all three options plus Auto × 4
+    levels × 12 keys) starting on a bar line and lasting whole bars;
+  - the 8-bar chord lengths for each option;
+  - the exact-repeat regression;
+  - `bars=8` in links.
+  - The main invariant, drum, tab and variation sweeps now include 8 bars,
+    and the golden test is unchanged.
+- **In the browser,** with E Harmonic Minor at Extreme and the Bars
+  dropdown on 8, the tab lays out in rows of 3 + 3 + 2:
+
+  | Chord changes | Chords |
+  |---------------|--------|
+  | Steady | one per bar (Em C B Em Em C B Em) |
+  | Longer | Em (2 bars), C (2 bars), B (4 bars) |
+  | Repeat | two bars each (i – V \| V – ii°) |
+
+  Playback raised no errors, and there's no sideways scroll.
 
 ---
 

@@ -25,7 +25,7 @@ export function generateRiff(options: GenerateOptions): Riff {
   if (!Number.isFinite(bpm) || bpm < BPM_MIN || bpm > BPM_MAX) {
     throw new RangeError(`BPM must be between ${BPM_MIN} and ${BPM_MAX}`);
   }
-  if (![1, 2, 4].includes(bars)) throw new RangeError('Bars must be 1, 2 or 4');
+  if (![1, 2, 4, 8].includes(bars)) throw new RangeError('Bars must be 1, 2, 4 or 8');
   const complexity = options.complexity ?? 'normal';
   if (!COMPLEXITIES.includes(complexity)) throw new RangeError(`Unknown complexity: ${complexity}`);
   const profile = PROFILES[complexity];

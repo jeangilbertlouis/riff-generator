@@ -43,7 +43,8 @@ export type ComplexityProfile = {
   fourChordChance: number;
 };
 
-const ORIGINAL_VARIATION = (bars: Bars) => (bars === 1 ? 4 : 8);
+/** 1 bar: a beat; 2 or 4 bars: half a bar; 8 bars: one bar. */
+const ORIGINAL_VARIATION = (bars: Bars) => (bars === 1 ? 4 : bars === 8 ? 16 : 8);
 const ORIGINAL_COUNTER: readonly CounterRhythm[] = ['sustain', 'halves', 'tremolo'];
 
 /** Technique cells for Complex and Extreme, flavored per style (arpeggios weigh heaviest). */
@@ -108,7 +109,7 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     extraCells: TECH_CELLS,
     groupingChance: 0.45,
     styleSwitchChance: 0.35,
-    variation: (bars) => (bars === 4 ? 16 : ORIGINAL_VARIATION(bars)),
+    variation: (bars) => (bars === 8 ? 32 : bars === 4 ? 16 : ORIGINAL_VARIATION(bars)),
     harmonyVaries: true,
     counterRhythms: [...ORIGINAL_COUNTER, 'eighths', 'threeThreeTwo'],
     arpRhythms: ['eighths', 'sixteenths', 'tremoloPairs'],

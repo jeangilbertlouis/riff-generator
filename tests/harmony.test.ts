@@ -52,7 +52,7 @@ describe('progressions', () => {
   });
 
   it('covers the whole riff without gaps, and both halves have the same chords', () => {
-    for (const bars of [1, 2, 4] as Bars[]) {
+    for (const bars of [1, 2, 4, 8] as Bars[]) {
       for (const complexity of COMPLEXITIES) {
         for (let seed = 0; seed < 20; seed++) {
           const r = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, bars, seed, complexity });
@@ -90,7 +90,7 @@ describe('chord changes', () => {
 
   it('every option covers the riff without gaps, starting on the tonic', () => {
     for (const changes of ['steady', 'longer', 'repeat'] as const) {
-      for (const bars of [1, 2, 4] as Bars[]) {
+      for (const bars of [1, 2, 4, 8] as Bars[]) {
         for (let seed = 0; seed < 15; seed++) {
           const r = generateRiff(opts(seed, bars, changes));
           expect(r.chordChanges).toBe(changes);
@@ -109,7 +109,7 @@ describe('chord changes', () => {
 
   it('longer: three chords, one exactly twice as long as the other two, in varying places', () => {
     const longPositions = new Set<number>();
-    for (const bars of [1, 2, 4] as Bars[]) {
+    for (const bars of [1, 2, 4, 8] as Bars[]) {
       for (let seed = 0; seed < 30; seed++) {
         const lengths = generateRiff(opts(seed, bars, 'longer')).progression.map((s) => s.length);
         expect(lengths).toHaveLength(3);
@@ -122,7 +122,7 @@ describe('chord changes', () => {
   });
 
   it('repeat: A′ has the same chord rhythm as A but different chords', () => {
-    for (const bars of [1, 2, 4] as Bars[]) {
+    for (const bars of [1, 2, 4, 8] as Bars[]) {
       for (let seed = 0; seed < 30; seed++) {
         const r = generateRiff(opts(seed, bars, 'repeat'));
         const half = r.totalSteps / 2;
@@ -164,6 +164,51 @@ describe('chord changes', () => {
       if (auto.chordChanges === 'steady') expect(auto).toEqual(generateRiff(opts(seed, 2, 'steady', 'extreme')));
     }
     expect(seen).toEqual(new Set(['steady', 'longer', 'repeat']));
+  });
+
+  it('Steady: A′ repeats A exactly, including pedal notes held across a chord change', () => {
+    // Regression: a pedal held into the next chord kept its "pedal" mark and was re-rooted on the copy.
+    let seed = 0;
+    for (const bars of [2, 4, 8] as Bars[]) {
+      for (const complexity of COMPLEXITIES) {
+        for (const key of NOTE_NAMES) {
+          const r = generateRiff({ key, scale: 'harmonicMinor', bpm: 180, bars, seed: seed++ * 61, complexity, chordChanges: 'steady' });
+          const half = r.totalSteps / 2;
+          const headLen = half - PROFILES[complexity].variation(bars);
+          const a = r.guitar1.filter((n) => n.step < headLen).map((n) => [n.step, n.midi]);
+          const b = r.guitar1.filter((n) => n.step >= half && n.step < half + headLen).map((n) => [n.step - half, n.midi]);
+          expect(b, `${bars} bars ${complexity} ${key}`).toEqual(a);
+        }
+      }
+    }
+  });
+
+  it('8 bars: every chord starts on a bar line and lasts whole bars, for every option, level and key', () => {
+    let chords = 0;
+    let seed = 0;
+    for (const changes of ['steady', 'longer', 'repeat', 'auto'] as const) {
+      for (const complexity of COMPLEXITIES) {
+        for (const key of NOTE_NAMES) {
+          const r = generateRiff({ key, scale: 'harmonicMinor', bpm: 180, bars: 8, seed: seed++ * 53, complexity, chordChanges: changes });
+          expect(r.totalSteps).toBe(128);
+          for (const s of r.progression) {
+            expect(s.step % 16, `${changes} ${complexity} ${key}: ${s.name}@${s.step}`).toBe(0);
+            expect(s.length % 16).toBe(0);
+            chords++;
+          }
+        }
+      }
+    }
+    expect(chords).toBeGreaterThan(400);
+  });
+
+  it('8 bars, Steady: one chord per bar (Simple: two bars each); Longer: 4 + 2 + 2 bars; Repeat: two bars each', () => {
+    const lengths = (changes: 'steady' | 'longer' | 'repeat', complexity: Complexity) =>
+      generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, bars: 8, seed: 9, complexity, chordChanges: changes }).progression.map((s) => s.length);
+    expect(lengths('steady', 'normal')).toEqual(Array(8).fill(16));
+    expect(lengths('steady', 'simple')).toEqual(Array(4).fill(32));
+    expect([...lengths('longer', 'normal')].sort((a, b) => a - b)).toEqual([32, 32, 64]);
+    expect(lengths('repeat', 'normal')).toEqual(Array(4).fill(32));
   });
 
   it('the engine defaults to Steady and rejects unknown values', () => {

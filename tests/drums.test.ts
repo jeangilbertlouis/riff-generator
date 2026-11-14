@@ -46,7 +46,7 @@ describe('drums on generated riffs', () => {
   let seed = 1;
   for (const complexity of COMPLEXITIES) {
     for (const style of STYLES) {
-      for (const bars of [1, 2, 4] as Bars[]) {
+      for (const bars of [1, 2, 4, 8] as Bars[]) {
         for (const key of NOTE_NAMES.slice(0, 4)) {
           riffs.push(generateRiff({ key, scale: 'harmonicMinor', bpm: 180, bars, seed: seed++ * 97, style, complexity }));
         }

@@ -36,13 +36,13 @@ describe('fitBars', () => {
 
 describe('layoutTab', () => {
   it('fits the container width whenever one bar at minimum step width fits', () => {
-    for (const bars of [1, 2, 4] as Bars[]) {
+    for (const bars of [1, 2, 4, 8] as Bars[]) {
       for (const width of WIDTHS) expect(layoutTab(riff(bars), { width }).width).toBeLessThanOrEqual(width);
     }
   });
 
   it('covers every bar exactly once, in order', () => {
-    for (const bars of [1, 2, 4] as Bars[]) {
+    for (const bars of [1, 2, 4, 8] as Bars[]) {
       for (const width of WIDTHS) {
         const layout = layoutTab(riff(bars), { width });
         const covered = layout.systems.flatMap((s) => Array.from({ length: s.steps }, (_, i) => s.firstStep + i));

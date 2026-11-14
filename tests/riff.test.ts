@@ -16,7 +16,7 @@ import {
 
 const ARCHETYPES: Archetype[] = ['tremolo', 'gallop', 'chug', 'breakdown'];
 const MODES: SecondGuitarMode[] = ['harmony', 'counter', 'octave', 'arpeggio'];
-const BARS: Bars[] = [1, 2, 4];
+const BARS: Bars[] = [1, 2, 4, 8];
 
 /** A broad sweep of riffs: every key × scale × bars × complexity, across styles, modes and seeds. */
 function sweep(): Riff[] {

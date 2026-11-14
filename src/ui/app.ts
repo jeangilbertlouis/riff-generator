@@ -142,7 +142,7 @@ export function mountApp(root: ParentNode = document): { player: Player; tabView
     regenerate();
   });
   ui.bars.addEventListener('change', () => {
-    settings.bars = (pickOption(ui.bars.value, ['1', '2', '4']) ? Number(ui.bars.value) : settings.bars) as Bars;
+    settings.bars = (pickOption(ui.bars.value, ['1', '2', '4', '8']) ? Number(ui.bars.value) : settings.bars) as Bars;
     regenerate();
   });
   ui.style.addEventListener('change', () => {

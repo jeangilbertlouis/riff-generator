@@ -104,6 +104,12 @@ describe('share links', () => {
     }
   });
 
+  it('accepts 8 bars in links', () => {
+    expect(fromQuery('?bars=8', defaults).settings.bars).toBe(8);
+    expect(fromQuery(toQuery({ settings: { ...custom, bars: 8 }, tempo: null }), defaults).settings.bars).toBe(8);
+    expect(fromQuery('?bars=16', defaults).settings.bars).toBe(defaults.bars);
+  });
+
   it('carries complexity as cx', () => {
     expect(toQuery({ settings: custom, tempo: null })).toContain('cx=extreme');
   });

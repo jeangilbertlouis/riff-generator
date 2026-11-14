@@ -262,7 +262,9 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
             state.passing = false;
           } else {
             midi = state.current;
-            pedal = state.pedal;
+            // A held pedal stays a pedal only under the same chord. Held into a new chord it is just a
+            // sustained tone there, so a repeat (A′) must keep its pitch rather than re-root it.
+            pedal = state.pedal && !chordChanged;
           }
           break;
         case 'chrom': {

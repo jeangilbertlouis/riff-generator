@@ -28,7 +28,7 @@ export type ChordSlot = {
   name: string;
 };
 
-export type Bars = 1 | 2 | 4;
+export type Bars = 1 | 2 | 4 | 8;
 
 /** How the chords move: steady, one chord twice as long, or the riff repeated over a new chord. */
 export const CHORD_CHANGES = ['steady', 'longer', 'repeat'] as const;

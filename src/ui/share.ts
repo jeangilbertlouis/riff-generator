@@ -37,7 +37,7 @@ export function fromQuery(query: string, defaults: Settings): ShareState {
   const settings: Settings = {
     key: pickOption(get('key'), NOTE_NAMES) ?? defaults.key,
     scale: pickOption<ScaleId>(get('scale'), SCALE_IDS) ?? defaults.scale,
-    bars: (pickOption(get('bars'), ['1', '2', '4']) ? Number(get('bars')) : defaults.bars) as Bars,
+    bars: (pickOption(get('bars'), ['1', '2', '4', '8']) ? Number(get('bars')) : defaults.bars) as Bars,
     style: pickOption(get('style'), Object.keys(STYLE_LABELS) as (Archetype | 'auto')[]) ?? defaults.style,
     guitar2Mode: pickOption(get('g2'), Object.keys(GUITAR2_LABELS) as (SecondGuitarMode | 'auto')[]) ?? defaults.guitar2Mode,
     // Links from before complexity existed carry a seed but no `cx`: they were made at Normal,

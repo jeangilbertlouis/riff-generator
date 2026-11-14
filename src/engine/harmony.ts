@@ -79,7 +79,7 @@ export const PROGRESSIONS: Record<ScaleId, { two: number[][]; four: number[][] }
 /** How many chords per half of the riff (the progression repeats in A′). */
 export function chordsPerHalf(bars: Bars, profile: ComplexityProfile, rng: Rng): 2 | 4 {
   if (bars === 1 || profile.maxChordsPerHalf === 2) return 2;
-  if (bars === 4) return 4;
+  if (bars === 4 || bars === 8) return 4; // 8 bars: one chord per bar
   return profile.fourChordChance > 0 && rng.chance(profile.fourChordChance) ? 4 : 2;
 }
 
@@ -144,7 +144,7 @@ export function chooseProgression(
   if (changes === 'repeat') {
     // The move for A′ comes from the scale's idiomatic two-chord moves (i → ♭II, i → ♭VI, i → V …).
     const by = rng.pick(two)[1]!;
-    const a: number[] = bars === 4 ? rng.pick(two) : [0];
+    const a: number[] = bars >= 4 ? rng.pick(two) : [0];
     const length = half / a.length;
     return lay(key, scale, [
       ...a.map((d): [number, number] => [d, length]),

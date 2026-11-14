@@ -60,7 +60,7 @@ describe('cells and groupings', () => {
   });
 
   it('variation length grows with complexity and never exceeds half the riff', () => {
-    for (const bars of [1, 2, 4] as Bars[]) {
+    for (const bars of [1, 2, 4, 8] as Bars[]) {
       const lengths = COMPLEXITIES.map((c) => variationLength(bars, c));
       for (let i = 1; i < lengths.length; i++) expect(lengths[i]!).toBeGreaterThanOrEqual(lengths[i - 1]!);
       for (const l of lengths) {

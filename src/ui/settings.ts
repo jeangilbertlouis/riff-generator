@@ -63,7 +63,7 @@ export const GUITAR2_LABELS: Record<SecondGuitarMode | 'auto', string> = {
   arpeggio: 'Arpeggio',
 };
 
-export const BARS_OPTIONS: Bars[] = [1, 2, 4];
+export const BARS_OPTIONS: Bars[] = [1, 2, 4, 8];
 
 export function defaultSettings(seed = randomSeed()): Settings {
   return {
