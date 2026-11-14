@@ -4,8 +4,8 @@ Generates random death metal riffs. You pick the key, scale and tempo. The app
 generates a riff, plays it back with two instruments, and shows the guitar part
 as tablature.
 
-> **Status:** Milestone 1 (riff engine) is done. Audio, the SVG tab and the UI
-> come next. This document holds the plan, the findings and the decisions.
+> **Status:** Milestones 1 (riff engine) and 2 (audio) are done. The SVG tab and
+> the UI come next. This document holds the plan, the findings and the decisions.
 
 ## Getting started
 
@@ -15,7 +15,7 @@ Requires Node 22.18+ (the `riff` script runs TypeScript directly).
 npm install
 npm test                                  # engine unit tests
 npm run riff -- E phrygian 200 2 1234     # print a riff as text tab: key scale bpm bars [seed]
-npm run dev                               # temporary preview page (text tab only)
+npm run dev                               # preview page: generate, play/stop, BPM, loop, count-in, mute/solo, text tab
 ```
 
 ---
@@ -72,7 +72,10 @@ src/
     random.ts        # seeded PRNG (mulberry32) for reproducible riffs
     types.ts         # Riff, NoteEvent, TabPosition
   audio/
+    schedule.ts      # pure: Riff → timed events in transport ticks, count-in, loop points
+    mixer.ts         # pure: mute/solo/volume → per-guitar gain
     guitar.ts        # Tone.js guitar voice (synth + distortion + cab filter), one instance per guitar
+    countIn.ts       # Tone.js muted-string scratch for the count-in
     player.ts        # transport: play/stop/loop, BPM, pan, solo/mute, cursor callbacks
   tab/
     renderTab.ts     # Riff → two SVG tab staves, playback cursor
@@ -266,13 +269,89 @@ diatonic 3rd above the root is a minor 3rd, and above the ♭2 it is a major
    playable, Guitar 2 stays in the scale and in time with Guitar 1).
    The tests sweep every key × scale × bar count. `formatAsciiTab` and
    `npm run riff` print riffs as text for checking by eye.
-2. **Audio:** Tone.js playback of both guitars (panned, detuned), play/stop/loop,
-   BPM changes, mute/solo, count-in.
+2. ✅ **Audio:** Tone.js playback of both guitars (panned, detuned), play/stop/loop,
+   BPM changes, mute/solo, count-in. Detailed plan and findings in §6.1.
 3. **Tab:** SVG renderer with two staves, palm-mute markings and a shared
    playback cursor.
 4. **UI:** controls connected to generate and play, and the seed shown.
 5. **Polish:** better guitar tone, MIDI export, sharing a riff via a seed in
    the URL.
+
+### 6.1 Milestone 2 plan: audio
+
+**Library:** Tone.js 15.1 (the current `latest` release). It handles the
+transport, looping, tempo changes and the effects chain.
+
+**Signal chain (one per guitar):**
+
+```
+Synth (fat sawtooth, 2 voices, ±12 cents)
+  → pre-filter (low-pass; ~3.5 kHz open, ~700 Hz palm-muted)
+  → Distortion (0.9, 4× oversampling)
+  → high-pass 90 Hz → EQ3 (mid scoop) → low-pass 4.5 kHz, 24 dB/oct (cab sim)
+  → Panner (G1 −0.8, G2 +0.8) → volume → mute/solo gain
+→ master: Compressor → Limiter → output
+```
+
+- **Palm mute:** the pre-filter closes per note and the note gets a shorter release.
+- **Accent:** velocity 1.0; other notes 0.75.
+- **Double-tracking:** Guitar 2 is detuned +6 cents and plays 8 ms late, so
+  the two parts sound like two players.
+- **Count-in:** four short noise bursts, band-passed and distorted (a muted
+  string scratch), on their own centered chain so mute/solo don't affect them.
+
+**Timing:**
+
+- Riff steps map to transport ticks (16th = PPQ/4).
+- When the count-in is on, the riff starts one bar later. The loop runs from
+  the end of the count-in to the end of the riff, so the count-in plays only
+  once.
+- BPM changes apply live through `transport.bpm`. Note lengths are converted
+  to seconds when each note plays, so they follow the new tempo.
+- With looping off, the transport stops at the end of the riff.
+- The cursor callback reports the current step (or the count-in beat) through
+  `Tone.Draw`, so the tab in milestone 3 can follow it.
+
+**Testing:**
+
+- `schedule.ts` and `mixer.ts` are pure and covered by unit tests.
+- The sound itself is checked in the browser with an offline render: the
+  output isn't silent, G1 sits in the left channel and G2 in the right, and
+  a muted guitar is silent.
+
+**Temporary controls:** the preview page gets play/stop, BPM, loop, count-in,
+and mute/solo per guitar, so the sound can be heard before the real UI
+(milestone 4).
+
+**Findings while building it:**
+
+- **Tone.Offline and globals.** Tone swaps its global context only while the
+  `Offline` setup callback runs. Anything that calls `Tone.getTransport()`,
+  `Tone.Ticks()` or `Tone.getDraw()` later, inside a scheduled event, reaches
+  the real-time transport and its tempo, not the offline one. The player
+  therefore binds its transport on first use, converts ticks to seconds with
+  that transport's own BPM, and uses `transport.context.draw`.
+- **Duplicate events.** Tone's clock sometimes invokes the same transport
+  event in two consecutive audio blocks, with times that differ only by
+  floating-point drift. On a monophonic `Synth` the second attack throws
+  "Start time must be strictly greater than previous start time". The voices
+  ignore an attack within 0.1 ms of the previous one (`DUPLICATE_WINDOW`).
+  Real notes are always at least about 58 ms apart (a 16th at 260 BPM).
+- **Mute at start.** A gain ramp that starts at time 0 lets the first note of a
+  muted guitar through for 20 ms. Mixer changes made while stopped are
+  therefore applied immediately, and only ramp during playback.
+
+**Verified:**
+
+- Offline renders of six riffs, covering every archetype, every Guitar 2 mode
+  and 60–260 BPM: note lengths match the schedule, muted output is exactly
+  silent, G1/G2 are panned left/right (about 6:1 RMS), and peaks stay at or
+  below about 0.5, so nothing clips.
+- In real time in the browser: the count-in plays once, the loop wraps,
+  a BPM change applies live (6 steps/s at 90 BPM), loop-off stops at the end
+  of the riff, and the console has no errors.
+- Not checked by machine: whether the tone sounds good. That needs ears.
+  Tone improvements are planned for the polish milestone.
 
 ---
 

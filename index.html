@@ -7,13 +7,41 @@
     <style>
       body { background: #111; color: #ddd; font-family: system-ui, sans-serif; margin: 2rem; }
       pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; overflow-x: auto; }
-      button { font-size: 1rem; padding: 0.4rem 1rem; }
+      button, select, input { font-size: 0.95rem; padding: 0.3rem 0.6rem; }
+      .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 0.75rem 0; }
+      #position { font-family: ui-monospace, Consolas, monospace; min-width: 9rem; }
     </style>
   </head>
   <body>
-    <h1>Riff Generator <small>(engine preview)</small></h1>
-    <p>Milestone 1 preview: a random E Phrygian riff as text tab. Audio and real controls come in milestones 2–4.</p>
-    <button id="generate">Generate</button>
+    <h1>Riff Generator <small>(preview)</small></h1>
+    <p>Temporary controls for milestones 1–2. The SVG tab and the real UI come in milestones 3–4.</p>
+
+    <div class="row">
+      <label>Key <select id="key"></select></label>
+      <label>Scale <select id="scale"></select></label>
+      <label>BPM <input id="bpm" type="number" min="60" max="260" value="180" style="width: 5rem" /></label>
+      <label>Bars
+        <select id="bars"><option>1</option><option selected>2</option><option>4</option></select>
+      </label>
+      <button id="generate">🎲 Generate</button>
+    </div>
+
+    <div class="row">
+      <button id="play">▶ Play</button>
+      <label><input id="loop" type="checkbox" checked /> Loop</label>
+      <label><input id="countin" type="checkbox" checked /> Count-in</label>
+      <span id="position"></span>
+    </div>
+
+    <div class="row">
+      <span>Guitar 1 (L)</span>
+      <label><input data-mute="guitar1" type="checkbox" /> Mute</label>
+      <label><input data-solo="guitar1" type="checkbox" /> Solo</label>
+      <span style="margin-left: 1.5rem">Guitar 2 (R)</span>
+      <label><input data-mute="guitar2" type="checkbox" /> Mute</label>
+      <label><input data-solo="guitar2" type="checkbox" /> Solo</label>
+    </div>
+
     <pre id="tab"></pre>
     <script type="module" src="/src/main.ts"></script>
   </body>
