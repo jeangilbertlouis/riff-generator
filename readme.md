@@ -4,8 +4,8 @@ Generates random death metal riffs. You pick the key, scale and tempo. The app
 generates a riff, plays it back with two instruments, and shows the guitar part
 as tablature.
 
-> **Status:** Milestones 1 (riff engine) and 2 (audio) are done. The SVG tab and
-> the UI come next. This document holds the plan, the findings and the decisions.
+> **Status:** Milestones 1 (riff engine), 2 (audio) and 3 (SVG tab) are done.
+> The real UI comes next. This document holds the plan, the findings and the decisions.
 
 ## Getting started
 
@@ -15,7 +15,7 @@ Requires Node 22.18+ (the `riff` script runs TypeScript directly).
 npm install
 npm test                                  # engine unit tests
 npm run riff -- E phrygian 200 2 1234     # print a riff as text tab: key scale bpm bars [seed]
-npm run dev                               # preview page: generate, play/stop, BPM, loop, count-in, mute/solo, text tab
+npm run dev                               # preview page: generate, play/stop, BPM, loop, count-in, mute/solo, SVG tab with cursor
 ```
 
 ---
@@ -78,7 +78,9 @@ src/
     countIn.ts       # Tone.js muted-string scratch for the count-in
     player.ts        # transport: play/stop/loop, BPM, pan, solo/mute, cursor callbacks
   tab/
-    renderTab.ts     # Riff → two SVG tab staves, playback cursor
+    layout.ts        # pure: Riff + width → systems, staves, note positions, palm-mute groups
+    renderSvg.ts     # pure: layout → SVG markup
+    TabView.ts       # DOM: mounts the SVG, re-lays out on resize, moves the playback cursor
   ui/
     controls.ts      # key / scale / BPM / bars / G2 mode / generate / play
   main.ts
@@ -271,8 +273,8 @@ diatonic 3rd above the root is a minor 3rd, and above the ♭2 it is a major
    `npm run riff` print riffs as text for checking by eye.
 2. ✅ **Audio:** Tone.js playback of both guitars (panned, detuned), play/stop/loop,
    BPM changes, mute/solo, count-in. Detailed plan and findings in §6.1.
-3. **Tab:** SVG renderer with two staves, palm-mute markings and a shared
-   playback cursor.
+3. ✅ **Tab:** SVG renderer with two staves, palm-mute markings and a shared
+   playback cursor. Detailed plan and findings in §6.2.
 4. **UI:** controls connected to generate and play, and the seed shown.
 5. **Polish:** better guitar tone, MIDI export, sharing a riff via a seed in
    the URL.
@@ -352,6 +354,79 @@ and mute/solo per guitar, so the sound can be heard before the real UI
   of the riff, and the console has no errors.
 - Not checked by machine: whether the tone sounds good. That needs ears.
   Tone improvements are planned for the polish milestone.
+
+### 6.2 Milestone 3 plan: SVG tab
+
+**Split into three layers**, so most of the work can be tested without a browser:
+
+| Module | Role | Tested by |
+|--------|------|-----------|
+| `tab/layout.ts` | Pure: riff + width → systems, staves, note positions, palm-mute groups | Unit tests |
+| `tab/renderSvg.ts` | Pure: layout → SVG markup string | Unit tests (string checks) |
+| `tab/TabView.ts` | DOM: mounts the SVG, re-lays out on resize, moves the cursor | Browser |
+
+**Layout rules:**
+
+- **Systems:** a system is one row holding both staves (Guitar 1 above,
+  Guitar 2 below) for the same bars, like a two-part score, so one cursor
+  line runs through both.
+- **Rhythm by spacing:** every 16th step gets the same width. Tab has no note
+  stems, so faint beat ticks every 4 steps and bar lines make the rhythm
+  readable.
+- **Wrapping:** the number of bars per row is decided at 18 px per step. The
+  row is then stretched to fill the width, up to 30 px per step. Rows are
+  balanced, so 4 bars that fit 3 per row become 2 + 2, not 3 + 1. With one
+  bar per row the step can shrink to 14 px. Below about 270 px even that
+  doesn't fit; the tab container then scrolls sideways, and the page never
+  does.
+- **Labels:** string names on the left (top string lowercase); a staff header
+  such as "Guitar 1 (L)" or "Guitar 2 · harmony (R)"; bar numbers above each
+  bar.
+- **Fret numbers** sit on the string line with a background-colored halo
+  (`paint-order: stroke`), so the line appears broken behind the number.
+  Chromatic passing tones get a muted color.
+- **Palm mutes:** a "P.M." label with a dashed line under each group of
+  consecutive palm-muted notes. A group breaks at an open note, at a rest of a
+  beat or longer, or at a line wrap.
+- **Theming:** colors come from CSS variables (`--tab-line`, `--tab-text`,
+  `--tab-bg`, `--tab-muted`, `--tab-accent`, `--tab-cursor`) with fallbacks,
+  so the real UI (milestone 4) can theme it for light and dark.
+- **Accessibility:** the SVG has `role="img"` and a label summarizing the riff
+  (key, scale, tuning, bars).
+
+**Cursor:** `TabView.setCursor(position)` takes the player's
+`CursorPosition`. It shows a translucent column over the current step across
+both staves of the active system, and highlights the notes that start on that
+step. During the count-in the cursor is hidden. Only DOM attributes change, so
+the SVG is never re-rendered during playback.
+
+**Findings while building it:**
+
+- **Stale cursor after Stop.** Cursor updates are queued on `Tone.Draw` ahead
+  of time, so some arrived after Stop and left a cursor stuck on the tab. The
+  player now cancels the Draw queue on stop and drops cursor events when not
+  playing.
+- **Header collision.** On a counter-melody or octave part the top-string
+  notes ran into the staff title. The header got more room (28 px).
+- **Wrapping too early.** Deciding the row fit at 22 px per step put 2 bars
+  on 2 rows at about 700 px. Deciding at 18 px and then stretching keeps them
+  on one row.
+- **Short palm-mute groups** showed a stub line ("P.M. -!"). They now show
+  the "P.M." label alone.
+
+**Verified:**
+
+- 23 unit tests cover row fitting and balancing, that every note is placed
+  once on its own string, rhythmic spacing, 7-string labels, palm-mute
+  grouping, that the cursor column lines up with the notes, and that the SVG
+  output is well-formed, labelled and uses only CSS-variable colors.
+- In the browser, with a 4-bar B Locrian riff at 240 BPM:
+  - The cursor passed through all 4 rows, with only one ever visible.
+  - It lined up with the highlighted note in 302 of 302 samples.
+  - Stop left no cursor and no highlighted notes.
+- On a phone-width screen (375 px) the tab was 342 px inside a 343 px
+  container, with no sideways page scroll. Resizing to 734 px re-laid it out
+  from 4 rows to 2. The console showed no errors.
 
 ---
 

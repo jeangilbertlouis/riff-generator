@@ -1,5 +1,6 @@
 // Temporary preview page until the real UI (milestone 4).
 import { Player } from './audio/player.ts';
+import { TabView } from './tab/TabView.ts';
 import type { GuitarId } from './audio/mixer.ts';
 import {
   BPM_MAX,
@@ -7,7 +8,6 @@ import {
   NOTE_NAMES,
   SCALES,
   SCALE_IDS,
-  formatAsciiTab,
   generateRiff,
   type Bars,
   type NoteName,
@@ -22,7 +22,8 @@ const bpmInput = $<HTMLInputElement>('#bpm');
 const barsSel = $<HTMLSelectElement>('#bars');
 const playBtn = $<HTMLButtonElement>('#play');
 const position = $<HTMLSpanElement>('#position');
-const tab = $<HTMLPreElement>('#tab');
+const info = $<HTMLDivElement>('#info');
+const tabView = new TabView($<HTMLDivElement>('#tab'));
 
 keySel.innerHTML = NOTE_NAMES.map((k) => `<option ${k === 'E' ? 'selected' : ''}>${k}</option>`).join('');
 scaleSel.innerHTML = SCALE_IDS.map((s) => `<option value="${s}">${SCALES[s].name}</option>`).join('');
@@ -41,7 +42,8 @@ function generate(): void {
     bpm: readBpm(),
     bars: Number(barsSel.value) as Bars,
   });
-  tab.textContent = formatAsciiTab(riff);
+  info.textContent = `${riff.tuning.name} · ${riff.archetype} · Guitar 2 ${riff.guitar2Mode} · seed ${riff.seed}`;
+  tabView.render(riff);
   player.load(riff);
 }
 
@@ -66,6 +68,7 @@ player.onStateChange((playing) => {
   playBtn.textContent = playing ? '■ Stop' : '▶ Play';
 });
 player.onCursor((p) => {
+  tabView.setCursor(p);
   if (!p) position.textContent = '';
   else if (p.kind === 'countIn') position.textContent = `count-in ${p.beat + 1}`;
   else position.textContent = `bar ${Math.floor(p.step / 16) + 1}, step ${(p.step % 16) + 1}`;

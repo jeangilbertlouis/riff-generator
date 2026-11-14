@@ -97,6 +97,8 @@ export class Player {
   stop(): void {
     this.transport.stop();
     this.transport.cancel(0);
+    // Cursor updates already queued on Draw would otherwise land after the stop and leave a stale cursor.
+    this.draw.cancel(0);
     this.stopEventId = null;
     if (this.audio) GUITARS.forEach((g) => this.audio?.voices[g].silence());
     this.setPlaying(false);
@@ -217,7 +219,9 @@ export class Player {
     tr.scheduleRepeat(
       (time) => {
         const position = positionAtTicks(s, tr.getTicksAtTime(time));
-        this.draw.schedule(() => this.emitCursor(position), time);
+        this.draw.schedule(() => {
+          if (this.playing) this.emitCursor(position);
+        }, time);
       },
       `${s.ticksPerStep}i`,
       0,
