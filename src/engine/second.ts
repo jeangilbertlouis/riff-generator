@@ -1,7 +1,7 @@
 import { PROFILES, type ArpRhythm, type ComplexityProfile, type CounterRhythm } from './complexity.ts';
 import { chordAt, type ChordSlot } from './harmony.ts';
 import type { Rng } from './random.ts';
-import { arpeggioNote, chordLadder, pedalRoot, type RawNote } from './riff.ts';
+import { arpShape, arpeggioNote, chordLadder, pedalRoot, shapeNote, type RawNote } from './riff.ts';
 import { isInScale, pc, scaleNotesInRange, shiftByScaleSteps } from './theory.ts';
 import type { Archetype, Bars, NoteName, ScaleId, SecondGuitarMode } from './types.ts';
 
@@ -269,6 +269,10 @@ const ARP_PATTERNS: Record<ArpRhythm, { tones: number[]; duration: number }> = {
   eighths: { tones: [0, 1, 2, 1], duration: 2 },
   sixteenths: { tones: [0, 1, 2, 3, 2, 1], duration: 1 },
   tremoloPairs: { tones: [0, 0, 1, 1, 2, 2, 1, 1], duration: 1 },
+  // Extreme only. With a 4-note chord, tone 3 is the flavour tone and 4 the octave.
+  roll: { tones: [0, 1, 2, 3, 4, 3, 2, 1], duration: 1 }, // up and back down
+  skip: { tones: [0, 2, 1, 3, 2, 4, 3, 1], duration: 1 }, // broken thirds
+  sweep: { tones: [0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1], duration: 1 }, // wide sweep, 3 beats long against the 4/4
 };
 
 /**
@@ -278,6 +282,7 @@ const ARP_PATTERNS: Record<ArpRhythm, { tones: number[]; duration: number }> = {
  */
 function arpeggioPart(ctx: SecondGuitarContext): RawNote[] {
   const profile = ctx.profile ?? PROFILES.normal;
+  if (profile.arpVaries) return extendedArpeggioPart(ctx, profile);
   const pattern = ARP_PATTERNS[ctx.rng.pick(profile.arpRhythms)];
   const pool = scaleNotesInRange(ctx.key, ctx.scale, ctx.root + 12, ctx.root + 24);
   const total = ctx.bars * 16;
@@ -298,6 +303,48 @@ function arpeggioPart(ctx: SecondGuitarContext): RawNote[] {
         midi: arpeggioNote(ladder, base, pattern.tones[k % pattern.tones.length] as number),
         palmMute: false,
         // Accent only where the chord changes: steady accents on every beat pushed peaks into the limiter.
+        accent: s === slot.step,
+        passing: false,
+      });
+    }
+  }
+  return notes;
+}
+
+/**
+ * Extreme's Arpeggio mode: each chord gets its own pattern and inversion (kept wherever that chord
+ * comes back, so repeats sound the same), over a wider range, and 4-note chords play their flavour tone.
+ */
+function extendedArpeggioPart(ctx: SecondGuitarContext, profile: ComplexityProfile): RawNote[] {
+  const total = ctx.bars * 16;
+  const low = ctx.root + 12;
+  const high = Math.min(ctx.high ?? Infinity, low + profile.arpRange);
+  const slots: Pick<ChordSlot, 'step' | 'length' | 'rootPc' | 'tones' | 'flavour' | 'degree'>[] =
+    ctx.chords && ctx.chords.length > 0
+      ? ctx.chords
+      : [{ step: 0, length: total, degree: 0, rootPc: pc(ctx.root), tones: [pc(ctx.root), pc(ctx.root + 3), pc(ctx.root + 7)] }];
+
+  const choices = new Map<number, { pattern: { tones: number[]; duration: number }; shift: number }>();
+  const notes: RawNote[] = [];
+  for (const slot of slots) {
+    let choice = choices.get(slot.degree);
+    if (!choice) {
+      choice = {
+        pattern: ARP_PATTERNS[ctx.rng.pick(profile.arpRhythms)],
+        shift: ctx.rng.weighted([0, 1, 2], (s) => (s === 0 ? 3 : 1)),
+      };
+      choices.set(slot.degree, choice);
+    }
+    const { pattern, shift } = choice;
+    const shape = arpShape(slot);
+    const base = low + pc(slot.rootPc - low);
+    let k = 0;
+    for (let s = slot.step; s < Math.min(slot.step + slot.length, total); s += pattern.duration, k++) {
+      notes.push({
+        step: s,
+        duration: Math.min(pattern.duration, slot.step + slot.length - s),
+        midi: shapeNote(base, shape, (pattern.tones[k % pattern.tones.length] as number) + shift, low, high),
+        palmMute: false,
         accent: s === slot.step,
         passing: false,
       });

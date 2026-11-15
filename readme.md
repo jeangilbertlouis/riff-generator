@@ -2171,6 +2171,82 @@ existing `chordOnDegree`.
 
   Playback ran with no console errors.
 
+### 6.21 Extreme arpeggios: wider shapes and a flavour note
+
+**Request:** at Extreme, make arpeggios (in either guitar) more complex.
+Also allow an extra "flavour" note, so an arpeggio can have 4 unique
+notes.
+
+**What changed (Extreme only):**
+
+- **Flavour tones** (`harmony.ts`: `flavourOptions`, `withFlavour`,
+  `addFlavours`):
+  - Each chord can gain a 4th tone from the scale: its **7th**, **9th** or
+    **11th**, built from stacked scale thirds. It is a 7th most often
+    (weights 3 : 2 : 1).
+  - Options that double a chord tone or blur the 3rd are skipped, for
+    example a ♭11, which sounds as a major 3rd.
+  - Each scale degree gets one with a 75 % chance at its first appearance,
+    and keeps it every time the chord comes back.
+  - The Chromatic scale uses the m7, ♭9 or 11.
+- **Chord names show the flavour** in the tab, the text tab and the
+  summary:
+  - names: "Em7", "Em(maj7)", "F#ø7", "D#°7", "Cmaj7", "F(add♭9)";
+  - Roman numerals: "i7", "iiø7", "♭II(add♭9)".
+
+  A chord is named with its flavour only if a guitar actually plays that
+  tone over it somewhere in the riff. It is then named that way every time
+  it comes round, so both halves read the same.
+- **Arpeggio shapes** (`riff.ts`: `arpShape`, `shapeNote`):
+  - An arpeggio is root, 3rd, 5th, then the flavour above the 5th (a 9th is
+    played as a 9th, not a 2nd).
+  - Each pass climbs an octave: R 3 5 F R′ 3′ …
+  - Out of range, notes fold back by octaves.
+- **Guitar 1** gets 4 new cells, alongside the existing ones:
+  - `arpSweep`: a two-octave sweep up;
+  - `arpSweepDown`: the same sweep down;
+  - `arpSkip`: broken thirds (R 5 3 F 5 R′ F 3);
+  - `arpTopPedal`: a pedal on the top note, with the chord climbing under
+    it.
+
+  Each run of arpeggio notes may also start on the 3rd or 5th (an
+  inversion; 3 : 1 : 1 for root, 3rd, 5th). It anchors on a chord root that
+  leaves room for the cell's highest note.
+- **Guitar 2's Arpeggio mode** (also inside Mixed):
+  - **Each chord picks its own pattern and inversion,** and keeps them
+    wherever the chord comes back.
+  - **Three new patterns:** `roll` (up and back), `skip` (broken thirds) and
+    `sweep` (12 steps, so it runs 3 beats against the 4/4).
+  - **Wider range:** up to two octaves above its lowest note, instead of
+    one, and never above fret 22.
+- **Profile fields** (`complexity.ts`): `arpFlavour` (the chance; 0 below
+  Extreme), `arpVaries` and `arpRange`. Below Extreme the values draw no
+  random numbers and take the old code paths.
+
+**Unchanged:**
+
+- Simple, Normal and Complex riffs: the golden fixture is unchanged.
+- The synth pad still plays triads.
+- Pedal notes, harmony and counter-melody still favour the triad's tones.
+
+Extreme riffs and links change, as with earlier Extreme refinements.
+
+**Other:** the text tab's chord line now handles names longer than a column
+("C#m(add♭9)").
+
+**Tests:**
+
+- chord naming for each kind of flavour;
+- flavours are scale tones and never duplicate a chord tone;
+- the same chord keeps the same flavour;
+- no flavours below Extreme;
+- shape and fold arithmetic;
+- across 108 Extreme riffs:
+  - Guitar 2 plays 4 unique notes over most flavoured chords;
+  - it climbs past an octave in most riffs;
+  - Guitar 1 uses the wide shapes;
+  - a flavour is named only where it is heard.
+
 ---
 
 ## 7. Decisions

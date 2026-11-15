@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateRiff } from '../src/engine/generate.ts';
-import { chordAt } from '../src/engine/harmony.ts';
+import { PROFILES } from '../src/engine/complexity.ts';
+import { chordAt, flavourOptions } from '../src/engine/harmony.ts';
 import { variationLength } from '../src/engine/riff.ts';
 import { SCALE_IDS, isInScale, pc } from '../src/engine/theory.ts';
 import { MAX_FRET, rootMidi } from '../src/engine/tuning.ts';
@@ -238,9 +239,12 @@ describe('Guitar 2 modes', () => {
     for (const r of of('arpeggio')) {
       const root = rootMidi(r.tuning, r.key);
       for (const n of r.guitar2) {
-        expect(chordAt(r.progression, n.step).tones).toContain(pc(n.midi));
+        // Extreme's 4-note chords add their flavour tone; Extreme also climbs higher (arpRange).
+        const chord = chordAt(r.progression, n.step);
+        const flavour = PROFILES[r.complexity].arpFlavour > 0 ? flavourOptions(r.key, r.scale, chord).map((o) => o.pc) : [];
+        expect([...chord.tones, ...flavour]).toContain(pc(n.midi));
         expect(n.midi).toBeGreaterThanOrEqual(root + 12);
-        expect(n.midi).toBeLessThanOrEqual(root + 24);
+        expect(n.midi).toBeLessThanOrEqual(root + 12 + PROFILES[r.complexity].arpRange);
       }
       if (r.chordChanges !== 'steady') continue;
       const half = r.totalSteps / 2;

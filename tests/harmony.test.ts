@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PROFILES } from '../src/engine/complexity.ts';
 import { generateRiff } from '../src/engine/generate.ts';
-import { PROGRESSIONS, chordAt, chordOnDegree, romanProgression } from '../src/engine/harmony.ts';
+import { PROGRESSIONS, addFlavours, chordAt, chordOnDegree, flavourOptions, romanProgression, withFlavour } from '../src/engine/harmony.ts';
+import { Rng } from '../src/engine/random.ts';
 import { CELLS } from '../src/engine/rhythm.ts';
-import { arpeggioNote, chordLadder } from '../src/engine/riff.ts';
+import { arpShape, arpeggioNote, chordLadder, shapeNote } from '../src/engine/riff.ts';
 import { SCALES, SCALE_IDS, pc, scaleNotesInRange } from '../src/engine/theory.ts';
 import { COMPLEXITIES, NOTE_NAMES, type Bars, type Complexity, type Riff } from '../src/engine/types.ts';
 
@@ -278,7 +279,7 @@ describe('arpeggios', () => {
   });
 
   it('every arpeggio cell only uses chord-tone roles that fit inside it', () => {
-    for (const id of ['arpeggio', 'arpUp', 'arpDown', 'arpBroken', 'arpRoll', 'tremArp', 'tremArpBeat', 'pedalArp', 'ringArp', 'g3Arp', 'g5Arp', 'g6Arp']) {
+    for (const id of ['arpeggio', 'arpUp', 'arpDown', 'arpBroken', 'arpRoll', 'tremArp', 'tremArpBeat', 'pedalArp', 'ringArp', 'g3Arp', 'g5Arp', 'g6Arp', 'arpSweep', 'arpSweepDown', 'arpSkip', 'arpTopPedal']) {
       const cell = CELLS[id]!;
       expect(cell.hits.some((h) => h.role === 'arp')).toBe(true);
       for (const h of cell.hits) {
@@ -328,5 +329,135 @@ describe('less random (measured)', () => {
     // Before chords: arpeggio share was 0.2–5.5 % depending on level (readme §6.10).
     expect(m.arpeggioShare).toBeGreaterThan(0.15);
     expect(m.strongBeatChordTones).toBeGreaterThan(0.75);
+  });
+});
+
+// ---- Extreme arpeggios: a 4th "flavour" tone and wider shapes ----
+
+describe('flavour tones', () => {
+  it.each([
+    ['phrygian', 0, 10, 'Em7', 'i7'],
+    ['harmonicMinor', 0, 11, 'Em(maj7)', 'i(maj7)'],
+    ['harmonicMinor', 4, 10, 'B7', 'V7'],
+    ['harmonicMinor', 6, 9, 'D#°7', 'vii°7'],
+    ['naturalMinor', 1, 10, 'F#ø7', 'iiø7'],
+    ['harmonicMinor', 2, 11, 'G+(maj7)', '♭III+(maj7)'],
+    ['naturalMinor', 5, 11, 'Cmaj7', '♭VImaj7'],
+    ['phrygian', 1, 2, 'F(add9)', '♭II(add9)'],
+    ['phrygian', 0, 1, 'Em(add♭9)', 'i(add♭9)'],
+    ['phrygian', 0, 5, 'Em(add11)', 'i(add11)'],
+  ] as const)('E %s degree %i + %i semitones → %s / %s', (scale, degree, semis, name, roman) => {
+    const chord = chordOnDegree('E', scale, degree);
+    const f = withFlavour(chord, pc(chord.rootPc + semis));
+    expect([f.name, f.roman]).toEqual([name, roman]);
+  });
+
+  it('every option is a scale tone that is not already in the chord', () => {
+    for (const scale of SCALE_IDS) {
+      const n = scale === 'chromatic' ? 12 : SCALES[scale].intervals.length;
+      for (let degree = 0; degree < n; degree++) {
+        const chord = chordOnDegree('E', scale, degree);
+        const options = flavourOptions('E', scale, chord);
+        if (scale !== 'chromatic') expect(options.length).toBeGreaterThan(0);
+        for (const o of options) {
+          expect(chord.tones).not.toContain(o.pc);
+          if (scale !== 'chromatic') expect(SCALES[scale].intervals.map((i) => pc(4 + i))).toContain(o.pc);
+        }
+      }
+    }
+  });
+
+  it('a chord keeps the same flavour every time it comes back; a chance of 0 changes nothing', () => {
+    const slots = [0, 5, 0, 5].map((d, i) => ({ ...chordOnDegree('E', 'naturalMinor', d), step: i * 8, length: 8 }));
+    const rng = new Rng(5);
+    expect(addFlavours(slots, 'E', 'naturalMinor', 0, rng)).toBe(slots);
+    expect(rng.next()).toBe(new Rng(5).next()); // no random numbers drawn
+    for (let seed = 1; seed < 40; seed++) {
+      const out = addFlavours(slots, 'E', 'naturalMinor', 1, new Rng(seed));
+      expect(out[0]!.flavour).toBeDefined();
+      expect(out[2]).toEqual({ ...out[0], step: 16 });
+      expect(out[3]).toEqual({ ...out[1], step: 24 });
+    }
+  });
+
+  it('only Extreme adds flavours; below it chords stay triads', () => {
+    for (const c of COMPLEXITIES) expect(PROFILES[c].arpFlavour > 0).toBe(c === 'extreme');
+    for (const complexity of ['simple', 'normal', 'complex'] as const) {
+      for (let seed = 1; seed <= 30; seed++) {
+        const r = generateRiff({ key: 'E', scale: 'harmonicMinor', bpm: 180, bars: 4, seed, complexity, guitar2Mode: 'arpeggio' });
+        expect(r.progression.every((s) => s.flavour === undefined)).toBe(true);
+      }
+    }
+  });
+});
+
+describe('arpeggio shapes', () => {
+  const em = chordOnDegree('E', 'phrygian', 0);
+
+  it('a triad is root, 3rd, 5th; a flavour goes above the 5th (a 9th, not a 2nd)', () => {
+    expect(arpShape(em)).toEqual([0, 3, 7]);
+    expect(arpShape(withFlavour(em, pc(4 + 10)))).toEqual([0, 3, 7, 10]); // Em7
+    expect(arpShape(withFlavour(em, pc(4 + 2)))).toEqual([0, 3, 7, 14]); // Em(add9)
+  });
+
+  it('each pass through the shape climbs an octave, folding back into range', () => {
+    const shape = [0, 3, 7, 10];
+    expect([0, 1, 2, 3, 4, 5].map((t) => shapeNote(52, shape, t, 52, 80))).toEqual([52, 55, 59, 62, 64, 67]);
+    expect(shapeNote(52, shape, 7, 52, 70)).toBe(62); // 74 is past the top: down an octave
+  });
+});
+
+describe('Extreme arpeggios', () => {
+  const riffs: Riff[] = [];
+  for (const key of NOTE_NAMES) {
+    for (const scale of ['phrygian', 'harmonicMinor', 'naturalMinor'] as const) {
+      for (const seed of [1, 2, 3]) {
+        riffs.push(generateRiff({ key, scale, bpm: 200, bars: 4, seed: seed * 101, complexity: 'extreme', guitar2Mode: 'arpeggio' }));
+      }
+    }
+  }
+
+  it('Guitar 2 plays 4 unique notes over most chords that have a flavour', () => {
+    let flavoured = 0;
+    let fourNotes = 0;
+    for (const r of riffs) {
+      for (const slot of r.progression.filter((s) => s.flavour !== undefined)) {
+        flavoured++;
+        const pcs = new Set(r.guitar2.filter((n) => n.step >= slot.step && n.step < slot.step + slot.length).map((n) => pc(n.midi)));
+        if (pcs.size === 4) fourNotes++;
+      }
+    }
+    expect(flavoured).toBeGreaterThan(100);
+    expect(fourNotes / flavoured).toBeGreaterThan(0.6);
+  });
+
+  it('Guitar 2 climbs past an octave in most riffs', () => {
+    const wide = riffs.filter((r) => {
+      const notes = r.guitar2.map((n) => n.midi);
+      return Math.max(...notes) - Math.min(...notes) > 12;
+    });
+    expect(wide.length / riffs.length).toBeGreaterThan(0.5);
+  });
+
+  it('Guitar 1 uses the wide arpeggio shapes', () => {
+    const g1Wide = riffs.filter((r) =>
+      r.guitar1.some((_, i) => {
+        const run = r.guitar1.slice(i, i + 8).map((m) => m.midi);
+        return run.length === 8 && Math.max(...run) - Math.min(...run) > 12 && new Set(run.map(pc)).size >= 4;
+      }),
+    );
+    expect(g1Wide.length).toBeGreaterThan(10);
+  });
+
+  it('chords are named with their flavour only if a guitar plays it over them', () => {
+    for (const r of riffs) {
+      for (const degree of new Set(r.progression.filter((s) => s.flavour !== undefined).map((s) => s.degree))) {
+        const slots = r.progression.filter((s) => s.degree === degree);
+        const heard = slots.some((s) =>
+          [...r.guitar1, ...r.guitar2].some((n) => n.step >= s.step && n.step < s.step + s.length && pc(n.midi) === s.flavour),
+        );
+        expect(heard).toBe(true);
+      }
+    }
   });
 });

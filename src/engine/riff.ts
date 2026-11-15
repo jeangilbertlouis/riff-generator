@@ -34,6 +34,8 @@ type MelodyState = {
   chromDir: number;
   /** Where the current arpeggio is anchored (a chord root). */
   arpBase: number;
+  /** Extreme: the current arpeggio's inversion (0 starts on the root, 1 on the 3rd, 2 on the 5th). */
+  arpShift: number;
   /** Start step of the chord under the previous note (to notice chord changes). */
   chordStep: number;
   /** Whether the previous note was a pedal note (so a hold of it is one too). */
@@ -205,6 +207,51 @@ export function arpeggioNote(ladder: number[], base: number, tone: number): numb
 }
 
 /**
+ * An arpeggio's shape: semitones above the chord root for tone 0, 1, 2 (root, 3rd, 5th) and, when
+ * the chord has a flavour tone, tone 3 (the flavour, placed above the 5th: a 7th, 9th or 11th).
+ */
+export function arpShape(chord: Pick<ChordSlot, 'rootPc' | 'tones' | 'flavour'>): number[] {
+  const shape = chord.tones.map((t) => pc(t - chord.rootPc));
+  if (chord.flavour !== undefined) {
+    const f = pc(chord.flavour - chord.rootPc);
+    shape.push(f > (shape[2] as number) ? f : f + 12);
+  }
+  return shape;
+}
+
+/**
+ * Tone number `tone` of `shape` above `base` (a chord root): each pass through the shape climbs an
+ * octave, so a 4-note shape runs root, 3rd, 5th, flavour, root′ … Out of [low, high] it folds by octaves.
+ */
+export function shapeNote(base: number, shape: number[], tone: number, low: number, high: number): number {
+  const n = shape.length;
+  const octave = Math.floor(tone / n);
+  let midi = base + 12 * octave + (shape[tone - octave * n] as number);
+  while (midi > high && midi - 12 >= low) midi -= 12;
+  while (midi < low) midi += 12;
+  return midi;
+}
+
+/**
+ * Extreme's Guitar 1 arpeggio note. A new run (or a chord change) picks an inversion and anchors on
+ * the chord root nearest below the current note that leaves room for the cell's highest tone.
+ */
+function extendedArpNote(ctx: MelodyContext, state: MelodyState, chord: ChordSlot, tone: number, maxTone: number, restart: boolean): number {
+  const shape = arpShape(chord);
+  const low = ctx.pool[0] ?? ctx.root;
+  const high = ctx.pool.at(-1) ?? low;
+  if (restart) {
+    state.arpShift = ctx.rng.weighted([0, 1, 2], (s) => (s === 0 ? 3 : 1));
+    const span = shapeNote(0, shape, maxTone + state.arpShift, -Infinity, Infinity);
+    const roots: number[] = [];
+    for (let r = low + pc(chord.rootPc - low); r <= high; r += 12) roots.push(r);
+    const fits = roots.filter((r) => r + span <= high);
+    state.arpBase = fits.filter((r) => r <= state.current).at(-1) ?? fits[0] ?? roots[0] ?? low;
+  }
+  return shapeNote(state.arpBase, shape, tone + state.arpShift, low, high);
+}
+
+/**
  * One step of a scale run: the next note of `pool` (ascending scale notes) from `current`
  * in direction `dir`. At either end of the pool the run turns around. Returns the note and
  * the (possibly reversed) direction.
@@ -295,6 +342,12 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
           state.passing = !isInScale(midi, ctx.key, ctx.scale);
           break;
         case 'arp': {
+          if (ctx.profile.arpVaries) {
+            const maxTone = Math.max(...cell.hits.filter((h) => h.role === 'arp' && h.offset >= hit.offset).map((h) => h.tone ?? 0));
+            midi = extendedArpNote(ctx, state, chord, hit.tone ?? 0, maxTone, prevRole !== 'arp' || chordChanged);
+            state.passing = false;
+            break;
+          }
           const ladder = chordLadder(ctx.pool, chord);
           if (prevRole !== 'arp') state.arpBase = arpeggioBase(ladder, chord, state.current);
           midi = arpeggioNote(ladder, state.arpBase, hit.tone ?? 0);
@@ -368,6 +421,7 @@ export function generateGuitar1(ctx: MelodyContext, archetype: Archetype, bars: 
     passing: false,
     chromDir: -1,
     arpBase: ctx.root,
+    arpShift: 0,
     chordStep: -1,
     pedal: false,
   };

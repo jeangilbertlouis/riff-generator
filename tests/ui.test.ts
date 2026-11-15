@@ -111,6 +111,7 @@ describe('settings', () => {
     const complex = generateRiff({
       key: 'C', scale: 'phrygian', bpm: 180, bars: 1, seed: 3, complexity: 'extreme', style: 'tremolo', guitar2Mode: 'harmony',
     });
-    expect(describeRiff(complex)).toBe('Drop C · Extreme tremolo riff · i – ♭vii · Guitar 2: harmony · 1 bar');
+    // Extreme: ♭vii gets a 9th (C), which Guitar 1 plays over it, so it is named with it.
+    expect(describeRiff(complex)).toBe('Drop C · Extreme tremolo riff · i – ♭vii(add9) · Guitar 2: harmony · 1 bar');
   });
 });

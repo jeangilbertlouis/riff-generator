@@ -2,7 +2,7 @@ import type { Weighted } from './rhythm.ts';
 import type { Archetype, Bars, Complexity } from './types.ts';
 
 export type CounterRhythm = 'sustain' | 'halves' | 'tremolo' | 'eighths' | 'threeThreeTwo';
-export type ArpRhythm = 'eighths' | 'sixteenths' | 'tremoloPairs';
+export type ArpRhythm = 'eighths' | 'sixteenths' | 'tremoloPairs' | 'roll' | 'skip' | 'sweep';
 
 /**
  * Everything the complexity level changes. Values of "no effect" (0, 1, empty) must not
@@ -35,6 +35,15 @@ export type ComplexityProfile = {
   counterRhythms: readonly CounterRhythm[];
   /** Rhythms Guitar 2's Arpeggio mode can use. */
   arpRhythms: readonly ArpRhythm[];
+  /** Chance each chord (per scale degree) gets a 4th "flavour" tone for its arpeggios: 0 = triads only. */
+  arpFlavour: number;
+  /**
+   * Arpeggios vary: Guitar 1's may start on the 3rd or 5th (an inversion); Guitar 2's picks a
+   * pattern and an inversion per chord, over a wider range (see arpRange).
+   */
+  arpVaries: boolean;
+  /** Semitones Guitar 2's arpeggios may climb above their lowest note (an octave above the pedal). */
+  arpRange: number;
   /** Weight multiplier for melodic notes that are tones of the current chord. */
   chordToneBoost: number;
   /** Most chords per half of the riff: 4-bar riffs use this many; 1-bar riffs always use 2. */
@@ -55,11 +64,14 @@ const TECH_CELLS: Record<Archetype, readonly Weighted[]> = {
   breakdown: [['stringSkip', 2], ['arpBroken', 1], ['arpeggio', 1], ['chromRun', 1]],
 };
 
+/** Extreme adds the wide arpeggio shapes: two-octave sweeps, skips and a pedal on the top note. */
 const EXTREME_CELLS: Record<Archetype, readonly Weighted[]> = {
-  tremolo: [['arpRoll', 4], ['arpBroken', 3], ['arpeggio', 4], ['trill', 3], ['chromRun8', 2], ['tremoloHalf', 3]],
-  gallop: [['stringSkip', 4], ['arpRoll', 2], ['arpBroken', 3], ['arpeggio', 3], ['trill', 2], ['chromRun8', 1]],
-  chug: [['stringSkip', 4], ['arpBroken', 3], ['arpeggio', 2], ['trill', 2], ['chromRun8', 1]],
-  breakdown: [['stringSkip', 3], ['arpBroken', 2], ['arpeggio', 2], ['trill', 1], ['chromRun', 1]],
+  tremolo: [['arpRoll', 4], ['arpBroken', 3], ['arpeggio', 3], ['trill', 3], ['chromRun8', 2], ['tremoloHalf', 3],
+    ['arpSweep', 3], ['arpSweepDown', 2], ['arpSkip', 3], ['arpTopPedal', 2]],
+  gallop: [['stringSkip', 4], ['arpRoll', 2], ['arpBroken', 3], ['arpeggio', 2], ['trill', 2], ['chromRun8', 1],
+    ['arpSweep', 2], ['arpSkip', 2], ['arpTopPedal', 2]],
+  chug: [['stringSkip', 4], ['arpBroken', 3], ['arpeggio', 2], ['trill', 2], ['chromRun8', 1], ['arpSkip', 2], ['arpSweep', 1]],
+  breakdown: [['stringSkip', 3], ['arpBroken', 2], ['arpeggio', 2], ['trill', 1], ['chromRun', 1], ['arpSkip', 1], ['arpSweep', 1]],
 };
 
 export const PROFILES: Record<Complexity, ComplexityProfile> = {
@@ -77,6 +89,9 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     harmonyVaries: false,
     counterRhythms: ['sustain', 'halves'],
     arpRhythms: ['eighths'],
+    arpFlavour: 0,
+    arpVaries: false,
+    arpRange: 12,
     chordToneBoost: 4,
     maxChordsPerHalf: 2,
     fourChordChance: 0,
@@ -95,6 +110,9 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     harmonyVaries: false,
     counterRhythms: ORIGINAL_COUNTER,
     arpRhythms: ['eighths', 'tremoloPairs'],
+    arpFlavour: 0,
+    arpVaries: false,
+    arpRange: 12,
     chordToneBoost: 3.5,
     maxChordsPerHalf: 4,
     fourChordChance: 0,
@@ -113,6 +131,9 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     harmonyVaries: true,
     counterRhythms: [...ORIGINAL_COUNTER, 'eighths', 'threeThreeTwo'],
     arpRhythms: ['eighths', 'sixteenths', 'tremoloPairs'],
+    arpFlavour: 0,
+    arpVaries: false,
+    arpRange: 12,
     chordToneBoost: 2.5,
     maxChordsPerHalf: 4,
     fourChordChance: 0.35,
@@ -131,7 +152,10 @@ export const PROFILES: Record<Complexity, ComplexityProfile> = {
     variation: (bars) => (bars === 1 ? 4 : (bars * 16) / 2 - 4),
     harmonyVaries: true,
     counterRhythms: ['halves', 'tremolo', 'eighths', 'threeThreeTwo'],
-    arpRhythms: ['sixteenths', 'tremoloPairs'],
+    arpRhythms: ['sixteenths', 'roll', 'skip', 'sweep', 'tremoloPairs'],
+    arpFlavour: 0.75,
+    arpVaries: true,
+    arpRange: 24,
     chordToneBoost: 2,
     maxChordsPerHalf: 4,
     fourChordChance: 0.6,

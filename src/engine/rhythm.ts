@@ -130,6 +130,11 @@ export const CELLS: Record<string, Cell> = {
   g3Arp: arp16('g3Arp', [0, 1, 2]),
   g5Arp: arp16('g5Arp', [0, 1, 2, 3, 2]),
   g6Arp: arp16('g6Arp', [0, 1, 2, 3, 2, 1]),
+  // Extreme only: wide shapes. With a 4-note chord (a flavour tone), tone 3 is the flavour and 4 the octave.
+  arpSweep: arp16('arpSweep', [0, 1, 2, 3, 4, 5, 6, 7]), // two-octave sweep up
+  arpSweepDown: arp16('arpSweepDown', [7, 6, 5, 4, 3, 2, 1, 0]),
+  arpSkip: arp16('arpSkip', [0, 2, 1, 3, 2, 4, 3, 1]), // broken thirds: skips every other chord tone
+  arpTopPedal: arp16('arpTopPedal', [4, 0, 4, 1, 4, 2, 4, 3]), // pedal on the top note, the chord climbing under it
   stringSkip: {
     id: 'stringSkip',
     length: 4,

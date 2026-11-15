@@ -168,6 +168,87 @@ export function chooseProgression(
   return lay(key, scale, [...degrees, ...degrees].map((d): [number, number] => [d, length]));
 }
 
+/** A flavour tone's kind; weights for picking one (7ths most, 11ths least). */
+type FlavourKind = '7' | '9' | '11';
+const FLAVOUR_WEIGHTS: Record<FlavourKind, number> = { '7': 3, '9': 2, '11': 1 };
+/** Scale steps above the chord root for each kind (stacked thirds), and semitones for the Chromatic scale. */
+const FLAVOUR_STEPS: Record<FlavourKind, number> = { '7': 6, '9': 1, '11': 3 };
+const CHROMATIC_FLAVOURS: Record<FlavourKind, number> = { '7': 10, '9': 1, '11': 5 };
+
+/** Name and Roman-numeral suffixes for a 7th (semitones above the root) on each triad quality. */
+const SEVENTHS: Record<ChordQuality, Record<number, string>> = {
+  minor: { 9: 'm6', 10: 'm7', 11: 'm(maj7)' },
+  major: { 9: '6', 10: '7', 11: 'maj7' },
+  diminished: { 9: '°7', 10: 'ø7', 11: '°(maj7)' },
+  augmented: { 9: '+6', 10: '+7', 11: '+(maj7)' },
+};
+const ADDS: Record<number, string> = { 1: 'add♭9', 2: 'add9', 3: 'add♯9', 5: 'add11', 6: 'add♯11' };
+
+/**
+ * The flavour tones a chord can take in this scale: its 7th, 9th or 11th (stacked scale thirds),
+ * skipping any that duplicate a chord tone or would blur the 3rd (a ♭11 is a major 3rd).
+ */
+export function flavourOptions(key: NoteName, scale: ScaleId, chord: Chord): { kind: FlavourKind; pc: number }[] {
+  const keyPc = pitchClassOf(key);
+  const out: { kind: FlavourKind; pc: number }[] = [];
+  for (const kind of Object.keys(FLAVOUR_STEPS) as FlavourKind[]) {
+    let tone: number;
+    if (scale === 'chromatic') {
+      tone = pc(chord.rootPc + CHROMATIC_FLAVOURS[kind]);
+    } else {
+      const iv = SCALES[scale].intervals;
+      tone = pc(keyPc + iv[(chord.degree + FLAVOUR_STEPS[kind]) % iv.length]!);
+    }
+    const semis = pc(tone - chord.rootPc);
+    if (chord.tones.includes(tone)) continue;
+    const named = kind === '7' ? SEVENTHS[chord.quality][semis] : ADDS[semis];
+    if (named) out.push({ kind, pc: tone });
+  }
+  return out;
+}
+
+/** The chord with a flavour tone added: "Em" → "Em7", "F" → "F(add♭9)"; "i" → "i7", "♭II" → "♭II(add♭9)". */
+export function withFlavour<C extends Chord>(chord: C, flavourPc: number): C {
+  const semis = pc(flavourPc - chord.rootPc);
+  const seventh = SEVENTHS[chord.quality][semis];
+  const isSeventh = seventh !== undefined && semis >= 9;
+  const triadSuffix = chord.quality === 'diminished' ? '°' : chord.quality === 'augmented' ? '+' : '';
+  const letter = NOTE_NAMES[chord.rootPc] as string;
+  let name: string;
+  let roman: string;
+  if (isSeventh) {
+    name = letter + seventh;
+    // Roman numerals show minor by case, so a minor chord's suffix drops its "m".
+    const bareRoman = triadSuffix ? chord.roman.slice(0, -triadSuffix.length) : chord.roman;
+    roman = bareRoman + (chord.quality === 'minor' ? seventh.slice(1) : seventh);
+  } else {
+    name = `${chord.name}(${ADDS[semis]})`;
+    roman = `${chord.roman}(${ADDS[semis]})`;
+  }
+  return { ...chord, flavour: flavourPc, name, roman };
+}
+
+/**
+ * Give chords a flavour tone (Extreme): each scale degree, at its first appearance, gets one with
+ * the given chance, and keeps it wherever it comes back, so repeats sound the same.
+ * A chance of 0 draws no random numbers.
+ */
+export function addFlavours(slots: ChordSlot[], key: NoteName, scale: ScaleId, chance: number, rng: Rng): ChordSlot[] {
+  if (chance <= 0) return slots;
+  const chosen = new Map<number, number | null>();
+  return slots.map((slot) => {
+    if (!chosen.has(slot.degree)) {
+      const options = flavourOptions(key, scale, slot);
+      chosen.set(
+        slot.degree,
+        options.length > 0 && rng.chance(chance) ? rng.weighted(options, (o) => FLAVOUR_WEIGHTS[o.kind]).pc : null,
+      );
+    }
+    const flavour = chosen.get(slot.degree);
+    return flavour === null || flavour === undefined ? slot : withFlavour(slot, flavour);
+  });
+}
+
 export function chordAt(slots: ChordSlot[], step: number): ChordSlot {
   return slots.find((s) => step >= s.step && step < s.step + s.length) ?? (slots.at(-1) as ChordSlot);
 }

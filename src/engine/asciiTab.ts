@@ -32,14 +32,16 @@ export function formatPartTab(notes: NoteEvent[], tuning: Tuning, totalSteps: nu
 
 /** Chord names above the tab, at each chord change (same column layout as the tab rows). */
 function chordLine(riff: Riff): string {
-  const cols: string[] = [];
+  // Names can run past their column ("C#m(add♭9)"): later columns are written after them, never over them.
+  let line = '';
+  let col = 0;
   for (let step = 0; step < riff.totalSteps; step++) {
-    if (step > 0 && step % 16 === 0) cols.push(' ');
+    if (step > 0 && step % 16 === 0) col += 1;
     const slot = riff.progression.find((s) => s.step === step);
-    // Names are at most 3 characters ("C#m", "G#°"), so each fits its column.
-    cols.push(slot ? slot.name.padEnd(COL) : ' '.repeat(COL));
+    if (slot) line = `${line.padEnd(col)}${line.length > col ? ' ' : ''}${slot.name}`;
+    col += COL;
   }
-  return `   ${cols.join('')}`.trimEnd();
+  return `   ${line}`.trimEnd();
 }
 
 export function formatAsciiTab(riff: Riff): string {

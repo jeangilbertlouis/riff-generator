@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateRiff } from '../src/engine/generate.ts';
-import { chordAt } from '../src/engine/harmony.ts';
+import { PROFILES } from '../src/engine/complexity.ts';
+import { chordAt, flavourOptions } from '../src/engine/harmony.ts';
 import { MIN_SECTION } from '../src/engine/second.ts';
 import { isInScale, pc } from '../src/engine/theory.ts';
 import { MAX_FRET, rootMidi } from '../src/engine/tuning.ts';
@@ -73,10 +74,14 @@ describe('Guitar 2 Mixed: notes', () => {
         const end = s.step + s.length;
         const notes = r.guitar2.filter((n) => n.step >= s.step && n.step < end);
         for (const n of notes) {
-          if (s.part === 'arpeggio') expect(chordAt(r.progression, n.step).tones).toContain(pc(n.midi));
+          if (s.part === 'arpeggio') {
+            const chord = chordAt(r.progression, n.step);
+            const flavour = PROFILES[r.complexity].arpFlavour > 0 ? flavourOptions(r.key, r.scale, chord).map((o) => o.pc) : [];
+            expect([...chord.tones, ...flavour]).toContain(pc(n.midi));
+          }
           if (s.part !== 'harmony') {
             expect(n.midi).toBeGreaterThanOrEqual(root + 12);
-            expect(n.midi).toBeLessThanOrEqual(root + 24);
+            expect(n.midi).toBeLessThanOrEqual(root + 12 + (s.part === 'arpeggio' ? PROFILES[r.complexity].arpRange : 12));
           }
         }
         if (s.part === 'harmony') {
