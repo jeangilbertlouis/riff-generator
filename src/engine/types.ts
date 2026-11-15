@@ -32,8 +32,9 @@ export type ChordSlot = {
   roman: string;
   name: string;
   /**
-   * An extra "flavour" tone for arpeggios (a pitch class: the chord's 7th, 9th or 11th from the
-   * scale), making them 4 unique notes. Extreme only; `name` and `roman` include it ("Em7").
+   * An extra "flavour" tone (a pitch class: the chord's 7th, 9th or 11th from the scale). Extreme
+   * only. Arpeggios play it as a 4th note, the pad adds it on top, and melodies lean on it;
+   * `name` and `roman` include it ("Em7").
    */
   flavour?: number;
 };

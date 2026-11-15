@@ -2194,9 +2194,8 @@ notes.
   - names: "Em7", "Em(maj7)", "F#ø7", "D#°7", "Cmaj7", "F(add♭9)";
   - Roman numerals: "i7", "iiø7", "♭II(add♭9)".
 
-  A chord is named with its flavour only if a guitar actually plays that
-  tone over it somewhere in the riff. It is then named that way every time
-  it comes round, so both halves read the same.
+  Every flavoured chord is named with its flavour, since the pad always
+  sounds it (see the extension below).
 - **Arpeggio shapes** (`riff.ts`: `arpShape`, `shapeNote`):
   - An arpeggio is root, 3rd, 5th, then the flavour above the 5th (a 9th is
     played as a 9th, not a 2nd).
@@ -2223,11 +2222,8 @@ notes.
   Extreme), `arpVaries` and `arpRange`. Below Extreme the values draw no
   random numbers and take the old code paths.
 
-**Unchanged:**
-
-- Simple, Normal and Complex riffs: the golden fixture is unchanged.
-- The synth pad still plays triads.
-- Pedal notes, harmony and counter-melody still favour the triad's tones.
+**Unchanged:** Simple, Normal and Complex riffs. The golden fixture is
+unchanged.
 
 Extreme riffs and links change, as with earlier Extreme refinements.
 
@@ -2244,8 +2240,37 @@ Extreme riffs and links change, as with earlier Extreme refinements.
 - across 108 Extreme riffs:
   - Guitar 2 plays 4 unique notes over most flavoured chords;
   - it climbs past an octave in most riffs;
-  - Guitar 1 uses the wide shapes;
-  - a flavour is named only where it is heard.
+  - Guitar 1 uses the wide shapes.
+
+**Extension: the rest of the riff uses the flavour too.** At first only
+the arpeggios played it; everything else worked from the triad.
+
+- **The synth pad adds it on top of its triad,** within an octave above
+  the top note (`pad.ts`).
+  - The triads still carry the voice leading.
+  - On top, a ♭9 colours the chord instead of clustering inside it.
+- **Guitar 1's melody notes lean on it** (`pickMove`):
+  - on weak beats it weighs as much as a chord tone;
+  - on strong beats, half as much, since they still want the triad.
+
+  In string-skipping, its high notes weigh it ×2, against ×4 for chord
+  tones. A held tremolo note that runs into a chord where it is the flavour
+  is kept rather than re-picked.
+- **The counter-melody weighs it ×2,** against ×4 for chord tones.
+- **The harmony part is unchanged:** it follows Guitar 1 by scale steps.
+- **Naming:** the earlier "named only where a guitar plays it" rule is
+  gone. The pad always sounds the flavour, so every flavoured chord is
+  named with it.
+- **Measured** (48 four-bar Extreme chug riffs in natural minor, notes over
+  flavoured chords that are not triad tones):
+  - Guitar 1 plays the flavour 168 times, against 60 on average for each of
+    the 3 other notes outside the chord;
+  - the counter-melody: 144 against 112.
+- **Tests:**
+  - the pad chord is the triad plus the flavour on top;
+  - Guitar 1 and the counter-melody favour the flavour;
+  - the strong-beat chord-tone measure (§6.10) now counts the flavour as a
+    chord note, since the pad sounds it.
 
 ---
 

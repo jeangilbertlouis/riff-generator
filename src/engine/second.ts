@@ -205,7 +205,9 @@ function counterMelody(ctx: SecondGuitarContext): RawNote[] {
     current = rng.weighted(pool, (n) => {
       const d = Math.abs(n - current);
       const w = d === 0 ? 0.4 : d <= 2 ? 5 : d <= 4 ? 3 : d <= 7 ? 1.5 : 0.3;
-      return chord && chord.tones.includes(pc(n)) ? w * 4 : w;
+      if (!chord) return w;
+      // Chord tones ×4; the flavour tone (Extreme) ×2, as colour.
+      return chord.tones.includes(pc(n)) ? w * 4 : chord.flavour === pc(n) ? w * 2 : w;
     });
     return current;
   };

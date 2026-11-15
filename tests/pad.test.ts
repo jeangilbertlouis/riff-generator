@@ -46,20 +46,32 @@ describe('the pad on generated riffs', () => {
     }
   });
 
-  it('every pad chord is its slot\'s triad: three distinct chord tones, in the pad register', () => {
+  it('every pad chord is its slot\'s triad (three distinct chord tones, in the pad register), plus any flavour on top', () => {
+    let flavoured = 0;
     for (const r of riffs) {
       const root = rootMidi(r.tuning, r.key);
       r.pad.forEach((p, i) => {
         const slot = r.progression[i]!;
-        expect(p.midis).toHaveLength(3);
-        expect(new Set(p.midis.map(pc))).toEqual(new Set(slot.tones));
-        for (const m of p.midis) {
+        const triad = p.midis.slice(0, 3);
+        expect(new Set(triad.map(pc))).toEqual(new Set(slot.tones));
+        for (const m of triad) {
           expect(m).toBeGreaterThanOrEqual(root + PAD_LOW);
           expect(m).toBeLessThanOrEqual(root + PAD_HIGH);
         }
-        expect(p.midis[2]! - p.midis[0]!).toBeLessThan(12); // close position
+        expect(triad[2]! - triad[0]!).toBeLessThan(12); // close position
+        if (slot.flavour === undefined) {
+          expect(p.midis).toHaveLength(3);
+        } else {
+          flavoured++;
+          // The flavour sits just above the triad: within an octave of its top note.
+          expect(p.midis).toHaveLength(4);
+          expect(pc(p.midis[3]!)).toBe(slot.flavour);
+          expect(p.midis[3]! - triad[2]!).toBeGreaterThan(0);
+          expect(p.midis[3]! - triad[2]!).toBeLessThanOrEqual(12);
+        }
       });
     }
+    expect(flavoured).toBeGreaterThan(0);
   });
 
   it('voice-leads more smoothly than playing every chord in root position', () => {
@@ -74,7 +86,8 @@ describe('the pad on generated riffs', () => {
         return options[0]!;
       });
       for (let i = 1; i < r.pad.length; i++) {
-        smooth += movement(r.pad[i - 1]!.midis, r.pad[i]!.midis);
+        // The triads carry the voice leading (a flavour sits on top of its triad).
+        smooth += movement(r.pad[i - 1]!.midis.slice(0, 3), r.pad[i]!.midis.slice(0, 3));
         rootPosition += movement(rootVoicings[i - 1]!, rootVoicings[i]!);
       }
     }

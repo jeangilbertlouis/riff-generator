@@ -35,7 +35,7 @@ export type ComplexityProfile = {
   counterRhythms: readonly CounterRhythm[];
   /** Rhythms Guitar 2's Arpeggio mode can use. */
   arpRhythms: readonly ArpRhythm[];
-  /** Chance each chord (per scale degree) gets a 4th "flavour" tone for its arpeggios: 0 = triads only. */
+  /** Chance each chord (per scale degree) gets a 4th "flavour" tone (see ChordSlot.flavour): 0 = triads only. */
   arpFlavour: number;
   /**
    * Arpeggios vary: Guitar 1's may start on the 3rd or 5th (an inversion); Guitar 2's picks a

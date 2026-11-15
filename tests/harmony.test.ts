@@ -298,6 +298,9 @@ describe('arpeggios', () => {
 
 const SCALE_LIST = ['phrygian', 'phrygianDominant', 'locrian', 'naturalMinor', 'harmonicMinor', 'diminished'] as const;
 
+/** A chord's notes: its triad, plus its flavour tone (Extreme), which the pad sounds with it. */
+const chordPcs = (c: { tones: number[]; flavour?: number }) => (c.flavour === undefined ? c.tones : [...c.tones, c.flavour]);
+
 function measure(complexity: Complexity) {
   let groups = 0, arps = 0, strong = 0, strongIn = 0;
   let seed = 7;
@@ -310,13 +313,13 @@ function measure(complexity: Complexity) {
         if (a.midi === b.midi || b.midi === d.midi || a.midi === d.midi) continue;
         groups++;
         const chord = chordAt(r.progression, d.step);
-        const inChord = [a, b, d].every((x) => chordAt(r.progression, x.step).tones.includes(pc(x.midi)));
+        const inChord = [a, b, d].every((x) => chordPcs(chordAt(r.progression, x.step)).includes(pc(x.midi)));
         if ((b.midi - a.midi) * (d.midi - b.midi) > 0 && inChord && chord) arps++;
       }
       for (const x of n) {
         if (x.palmMute || !(x.accent || x.step % 4 === 0)) continue;
         strong++;
-        if (chordAt(r.progression, x.step).tones.includes(pc(x.midi))) strongIn++;
+        if (chordPcs(chordAt(r.progression, x.step)).includes(pc(x.midi))) strongIn++;
       }
     }
   }
@@ -449,15 +452,36 @@ describe('Extreme arpeggios', () => {
     expect(g1Wide.length).toBeGreaterThan(10);
   });
 
-  it('chords are named with their flavour only if a guitar plays it over them', () => {
+  it('a flavoured chord is named with its flavour everywhere it plays', () => {
     for (const r of riffs) {
-      for (const degree of new Set(r.progression.filter((s) => s.flavour !== undefined).map((s) => s.degree))) {
-        const slots = r.progression.filter((s) => s.degree === degree);
-        const heard = slots.some((s) =>
-          [...r.guitar1, ...r.guitar2].some((n) => n.step >= s.step && n.step < s.step + s.length && pc(n.midi) === s.flavour),
-        );
-        expect(heard).toBe(true);
+      for (const s of r.progression.filter((c) => c.flavour !== undefined)) {
+        expect(s.name).toBe(withFlavour(chordOnDegree(r.key, r.scale, s.degree), s.flavour!).name);
       }
     }
+  });
+
+  it('Guitar 1 and the counter-melody lean on the flavour tone more than on other non-chord notes', () => {
+    // Over flavoured chords: how often a note is the flavour vs. any one other non-chord scale note.
+    const share = (guitar2Mode: 'harmony' | 'counter', part: 'guitar1' | 'guitar2') => {
+      let flavour = 0;
+      let others = 0;
+      for (const key of NOTE_NAMES) {
+        for (const seed of [11, 22, 33, 44]) {
+          const r = generateRiff({ key, scale: 'naturalMinor', bpm: 180, bars: 4, seed, complexity: 'extreme', guitar2Mode, style: 'chug' });
+          for (const n of r[part]) {
+            const c = chordAt(r.progression, n.step);
+            if (c.flavour === undefined || c.tones.includes(pc(n.midi))) continue;
+            if (pc(n.midi) === c.flavour) flavour++;
+            else others++;
+          }
+        }
+      }
+      // 7 scale notes − 3 chord tones − the flavour leaves 3 other notes.
+      return { flavour, perOther: others / 3 };
+    };
+    const g1 = share('harmony', 'guitar1');
+    expect(g1.flavour).toBeGreaterThan(g1.perOther);
+    const counter = share('counter', 'guitar2');
+    expect(counter.flavour).toBeGreaterThan(counter.perOther);
   });
 });

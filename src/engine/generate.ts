@@ -1,13 +1,13 @@
 import { PROFILES } from './complexity.ts';
 import { generateDrums } from './drums.ts';
-import { addFlavours, autoChordChanges, chooseProgression, chordOnDegree } from './harmony.ts';
+import { addFlavours, autoChordChanges, chooseProgression } from './harmony.ts';
 import { voicePad } from './pad.ts';
 import { Rng, randomSeed } from './random.ts';
 import { chooseArchetype, generateGuitar1, makeMelodyContext, type RawNote } from './riff.ts';
 import { autoSecondGuitarMode, deriveGuitar2, mixedGuitar2 } from './second.ts';
-import { SCALES, pc } from './theory.ts';
+import { SCALES } from './theory.ts';
 import { TUNING_IDS, assignTabPositions, highestPlayable, rootMidi, tuningFor } from './tuning.ts';
-import { CHORD_CHANGES, COMPLEXITIES, NOTE_NAMES, type ChordSlot, type GenerateOptions, type Riff } from './types.ts';
+import { CHORD_CHANGES, COMPLEXITIES, NOTE_NAMES, type GenerateOptions, type Riff } from './types.ts';
 
 export const BPM_MIN = 60;
 export const BPM_MAX = 260;
@@ -43,7 +43,8 @@ export function generateRiff(options: GenerateOptions): Riff {
     throw new RangeError(`Unknown chord changes: ${changesChoice}`);
   }
   const chordChanges = changesChoice === 'auto' ? autoChordChanges(seed, complexity === 'simple') : changesChoice;
-  // Extreme gives some chords a 4th "flavour" tone for the arpeggios (no random draws below Extreme).
+  // Extreme gives some chords a 4th "flavour" tone: the pad plays it, arpeggios use it, melodies lean on it.
+  // No random draws below Extreme.
   const progression = addFlavours(chooseProgression(key, scale, bars, profile, rng, chordChanges), key, scale, profile.arpFlavour, rng);
   const ctx = makeMelodyContext(key, scale, root, highestPlayable(tuning), rng, profile, chromaticPassing, progression);
   const g1 = generateGuitar1(ctx, archetype, bars);
@@ -60,17 +61,6 @@ export function generateRiff(options: GenerateOptions): Riff {
     guitar2Sections = [{ step: 0, length: bars * 16, part: guitar2Mode }];
   }
 
-  // A chord is named with its flavour ("Em7") only if a guitar plays that tone over it somewhere in
-  // the riff; then every time it comes round, so the halves keep the same names.
-  const playsFlavour = (slot: ChordSlot) =>
-    [...g1, ...g2].some((n) => n.step >= slot.step && n.step < slot.step + slot.length && pc(n.midi) === slot.flavour);
-  const heardDegrees = new Set(progression.filter((s) => s.flavour !== undefined && playsFlavour(s)).map((s) => s.degree));
-  const named = progression.map((slot) =>
-    slot.flavour === undefined || heardDegrees.has(slot.degree)
-      ? slot
-      : { ...chordOnDegree(key, scale, slot.degree), step: slot.step, length: slot.length },
-  );
-
   return {
     key,
     scale,
@@ -82,7 +72,7 @@ export function generateRiff(options: GenerateOptions): Riff {
     archetype,
     complexity,
     chromaticPassing,
-    progression: named,
+    progression,
     chordChanges,
     // Derived from the progression without randomness, so the riff itself is unchanged.
     pad: voicePad(progression, root),

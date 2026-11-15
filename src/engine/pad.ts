@@ -33,7 +33,9 @@ export function movement(a: number[], b: number[]): number {
 /**
  * Voice the progression for the pad: close-position triads between root+12 and root+28. The first
  * chord takes the voicing nearest the middle of that range; each next chord takes the inversion
- * closest to the previous one (smooth voice leading, like a keyboard player).
+ * closest to the previous one (smooth voice leading, like a keyboard player). A chord with a
+ * flavour tone (Extreme) adds it on top, just above the triad, so a ♭9 colours the chord
+ * instead of clustering inside it; the voice leading follows the triads.
  */
 export function voicePad(progression: ChordSlot[], root: number): PadChord[] {
   const low = root + PAD_LOW;
@@ -47,7 +49,9 @@ export function voicePad(progression: ChordSlot[], root: number): PadChord[] {
       const cost = (x: number[]) => (prev ? movement(prev, x) : Math.abs(x[1]! - middle));
       return cost(v) < cost(best) ? v : best;
     }, options[0]!);
-    out.push({ step: slot.step, length: slot.length, midis: choice });
+    const top = choice.at(-1) as number;
+    const flavour = slot.flavour === undefined ? [] : [top + 1 + pc(slot.flavour - top - 1)];
+    out.push({ step: slot.step, length: slot.length, midis: [...choice, ...flavour] });
     prev = choice;
   }
   return out;

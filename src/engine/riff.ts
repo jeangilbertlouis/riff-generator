@@ -82,6 +82,8 @@ export function pedalRoot(root: number, chord: Chord): number {
 }
 
 const isChordTone = (midi: number, chord: Chord) => chord.tones.includes(pc(midi));
+/** The chord's flavour tone (Extreme's 7th, 9th or 11th), if it has one. */
+const isFlavour = (midi: number, chord: Chord) => chord.flavour !== undefined && pc(midi) === chord.flavour;
 
 /** The style's cell pool, adjusted by the complexity profile. Normal returns the original pool unchanged. */
 export function cellPool(archetype: Archetype, profile: ComplexityProfile): Weighted[] {
@@ -167,6 +169,8 @@ export function pickMove(
     if (degree === 6) w *= 2 * p.dissonanceBoost; // tritone
     if (n > ctx.root + 12) w *= p.highRegister; // keep it low and heavy
     if (isChordTone(n, chord)) w *= chordBoost * (pc(n) === chord.rootPc ? 1.2 : 1);
+    // The flavour is colour: as strong as a chord tone on weak beats, half as strong on strong ones.
+    else if (isFlavour(n, chord)) w *= p.chordToneBoost;
     return w;
   });
 }
@@ -175,7 +179,10 @@ export function pickMove(
 function pickHigh(ctx: MelodyContext, current: number, chord: Chord): number {
   const high = ctx.pool.filter((n) => n >= ctx.root + 7 && n !== current);
   if (high.length === 0) return pickMove(ctx, current, chord);
-  return ctx.rng.weighted(high, (n) => (Math.abs(n - current) <= 4 ? 3 : 1) * (isChordTone(n, chord) ? 4 : 1));
+  return ctx.rng.weighted(
+    high,
+    (n) => (Math.abs(n - current) <= 4 ? 3 : 1) * (isChordTone(n, chord) ? 4 : isFlavour(n, chord) ? 2 : 1),
+  );
 }
 
 /** The chord's tones within the melody's range, ascending (the rungs an arpeggio climbs). */
@@ -303,8 +310,8 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
           state.passing = false;
           break;
         case 'hold':
-          // A held tremolo note that runs into a chord it doesn't belong to is re-picked.
-          if (chordChanged && !isChordTone(state.current, chord)) {
+          // A held tremolo note that runs into a chord it doesn't belong to (not even as its flavour) is re-picked.
+          if (chordChanged && !isChordTone(state.current, chord) && !isFlavour(state.current, chord)) {
             midi = pickMove(ctx, state.current, chord, true);
             state.passing = false;
           } else {
