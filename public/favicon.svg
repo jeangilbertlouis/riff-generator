@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Riff Generator</title>
+  <!-- A guitar pick in the app's accent red, with a lightning bolt. -->
+  <path d="M32 61C19 50 4 31 4 18 4 7 16 3 32 3s28 4 28 15c0 13-15 32-28 43Z" fill="#c8102e" stroke="#7a0a1c" stroke-width="2"/>
+  <path d="M37 9 21 33h10l-6 21 18-28H32l5-17Z" fill="#fff"/>
+</svg>
