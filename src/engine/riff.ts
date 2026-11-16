@@ -36,6 +36,8 @@ type MelodyState = {
   arpBase: number;
   /** Extreme: the current arpeggio's inversion (0 starts on the root, 1 on the 3rd, 2 on the 5th). */
   arpShift: number;
+  /** Extreme: the step of the chord the current arpeggio is anchored on. */
+  arpChordStep: number;
   /** Start step of the chord under the previous note (to notice chord changes). */
   chordStep: number;
   /** Whether the previous note was a pedal note (so a hold of it is one too). */
@@ -248,6 +250,7 @@ function extendedArpNote(ctx: MelodyContext, state: MelodyState, chord: ChordSlo
   const low = ctx.pool[0] ?? ctx.root;
   const high = ctx.pool.at(-1) ?? low;
   if (restart) {
+    state.arpChordStep = chord.step;
     state.arpShift = ctx.rng.weighted([0, 1, 2], (s) => (s === 0 ? 3 : 1));
     const span = shapeNote(0, shape, maxTone + state.arpShift, -Infinity, Infinity);
     const roots: number[] = [];
@@ -351,7 +354,10 @@ function renderCells(cells: Cell[], startStep: number, ctx: MelodyContext, state
         case 'arp': {
           if (ctx.profile.arpVaries) {
             const maxTone = Math.max(...cell.hits.filter((h) => h.role === 'arp' && h.offset >= hit.offset).map((h) => h.tone ?? 0));
-            midi = extendedArpNote(ctx, state, chord, hit.tone ?? 0, maxTone, prevRole !== 'arp' || chordChanged);
+            // A pedal hit between arp hits (arpPedalSpread …) keeps the run going within the cell.
+            const firstArp = cell.hits.find((h) => h.role === 'arp') === hit;
+            const restart = state.arpChordStep !== chord.step || (prevRole !== 'arp' && (prevRole !== 'root' || firstArp));
+            midi = extendedArpNote(ctx, state, chord, hit.tone ?? 0, maxTone, restart);
             state.passing = false;
             break;
           }
@@ -429,6 +435,7 @@ export function generateGuitar1(ctx: MelodyContext, archetype: Archetype, bars: 
     chromDir: -1,
     arpBase: ctx.root,
     arpShift: 0,
+    arpChordStep: -1,
     chordStep: -1,
     pedal: false,
   };

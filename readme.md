@@ -2272,6 +2272,52 @@ the arpeggios played it; everything else worked from the triad.
   - the strong-beat chord-tone measure (§6.10) now counts the flavour as a
     chord note, since the pad sounds it.
 
+### 6.22 Spread-out arpeggios and pedal tones
+
+**Request:** arpeggios always walked through the chord tone by tone (R 3 5
+R′ …). Spread them out, and use a pedal tone.
+
+**What changed (Complex and Extreme):**
+
+- **Guitar 1** gets 3 new cells (`rhythm.ts`):
+  - `arpSpread`: an open voicing, R 5 3′ 5′ F/R′ … where every move skips
+    at least one chord tone;
+  - `arpPedalSpread`: a low palm-muted pedal on the chord root, alternating
+    with a spread line above it (5, 3′, 3, 5′);
+  - `arpPedalLeap`: a gallop-like pedal (two hits) with leaps between the
+    top and bottom of the chord.
+
+  In the style pools they now outweigh the stepwise shapes (`arpRoll`,
+  `arpeggio`, the sweeps), which stay in but less often.
+- **Guitar 2's Arpeggio mode** (also inside Mixed) gets 3 new patterns
+  (`second.ts`):
+  - `spread` (Complex and Extreme): the same open voicing;
+  - `pedal` (Complex and Extreme): the chord root on every other 16th, a
+    spread line above it;
+  - `leap` (Extreme): pedal, then leaps of a 10th and more.
+
+  The pedal (`'P'` in a pattern) always plays the chord's root at the
+  bottom of the arpeggio, even when an Extreme chord picks an inversion.
+- **Extreme's Guitar 1 anchor:** a pedal hit between arpeggio notes no
+  longer restarts the arpeggio (which would re-pick the inversion on every
+  note). It restarts on a new cell, or on a new chord: the anchor remembers
+  its chord, since a chord change can land on the pedal hit.
+
+**Measured** (Guitar 2 Arpeggio mode, 400 four-bar riffs in E Phrygian,
+moves of a major 3rd or less / mean move):
+
+| | Before | After |
+|---|---|---|
+| Complex | 75 % / 3.6 semitones | 62 % / 4.2 semitones |
+| Extreme | 67 % / 4.3 semitones | 46 % / 6.6 semitones |
+
+**Unchanged:** Simple and Normal riffs. The golden fixture is unchanged.
+Complex and Extreme riffs and links change.
+
+**Tests:** the new cells never move to the next chord tone; Complex and
+Extreme Guitar 2 arpeggios move by small steps less often than before and
+use the pedal pattern; Extreme Guitar 1's pedal stays on the chord root.
+
 ---
 
 ## 7. Decisions

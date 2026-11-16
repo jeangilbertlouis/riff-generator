@@ -266,12 +266,20 @@ function counterMelody(ctx: SecondGuitarContext): RawNote[] {
   return notes;
 }
 
+/** `P`: the pedal, the chord's root at the bottom of the arpeggio (whatever the inversion). */
+type ArpTone = number | 'P';
+type ArpPattern = { tones: ArpTone[]; duration: number };
+
 /** Tone patterns per arpeggio rhythm (indices into the chord's tones, from its root). */
-const ARP_PATTERNS: Record<ArpRhythm, { tones: number[]; duration: number }> = {
+const ARP_PATTERNS: Record<ArpRhythm, ArpPattern> = {
   eighths: { tones: [0, 1, 2, 1], duration: 2 },
   sixteenths: { tones: [0, 1, 2, 3, 2, 1], duration: 1 },
   tremoloPairs: { tones: [0, 0, 1, 1, 2, 2, 1, 1], duration: 1 },
+  // Complex and Extreme: spread out, leaping over chord tones rather than walking through them.
+  spread: { tones: [0, 2, 4, 6, 3, 5, 1, 4], duration: 1 }, // open voicing
+  pedal: { tones: ['P', 2, 'P', 4, 'P', 3, 'P', 5], duration: 1 }, // pedal on the root, a spread line above it
   // Extreme only. With a 4-note chord, tone 3 is the flavour tone and 4 the octave.
+  leap: { tones: ['P', 4, 2, 'P', 5, 1, 'P', 6], duration: 1 }, // pedal, then leaps of a 10th and more
   roll: { tones: [0, 1, 2, 3, 4, 3, 2, 1], duration: 1 }, // up and back down
   skip: { tones: [0, 2, 1, 3, 2, 4, 3, 1], duration: 1 }, // broken thirds
   sweep: { tones: [0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1], duration: 1 }, // wide sweep, 3 beats long against the 4/4
@@ -299,10 +307,11 @@ function arpeggioPart(ctx: SecondGuitarContext): RawNote[] {
     const base = ladder.find((n) => pc(n) === slot.rootPc) ?? ladder[0] ?? ctx.root + 12;
     let k = 0;
     for (let s = slot.step; s < Math.min(slot.step + slot.length, total); s += pattern.duration, k++) {
+      const tone = pattern.tones[k % pattern.tones.length] as ArpTone;
       notes.push({
         step: s,
         duration: Math.min(pattern.duration, slot.step + slot.length - s),
-        midi: arpeggioNote(ladder, base, pattern.tones[k % pattern.tones.length] as number),
+        midi: tone === 'P' ? base : arpeggioNote(ladder, base, tone),
         palmMute: false,
         // Accent only where the chord changes: steady accents on every beat pushed peaks into the limiter.
         accent: s === slot.step,
@@ -326,7 +335,7 @@ function extendedArpeggioPart(ctx: SecondGuitarContext, profile: ComplexityProfi
       ? ctx.chords
       : [{ step: 0, length: total, degree: 0, rootPc: pc(ctx.root), tones: [pc(ctx.root), pc(ctx.root + 3), pc(ctx.root + 7)] }];
 
-  const choices = new Map<number, { pattern: { tones: number[]; duration: number }; shift: number }>();
+  const choices = new Map<number, { pattern: ArpPattern; shift: number }>();
   const notes: RawNote[] = [];
   for (const slot of slots) {
     let choice = choices.get(slot.degree);
@@ -342,10 +351,12 @@ function extendedArpeggioPart(ctx: SecondGuitarContext, profile: ComplexityProfi
     const base = low + pc(slot.rootPc - low);
     let k = 0;
     for (let s = slot.step; s < Math.min(slot.step + slot.length, total); s += pattern.duration, k++) {
+      const tone = pattern.tones[k % pattern.tones.length] as ArpTone;
       notes.push({
         step: s,
         duration: Math.min(pattern.duration, slot.step + slot.length - s),
-        midi: shapeNote(base, shape, (pattern.tones[k % pattern.tones.length] as number) + shift, low, high),
+        // The pedal stays on the root even when the chord is inverted.
+        midi: tone === 'P' ? base : shapeNote(base, shape, tone + shift, low, high),
         palmMute: false,
         accent: s === slot.step,
         passing: false,

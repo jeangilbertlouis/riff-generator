@@ -135,6 +135,22 @@ export const CELLS: Record<string, Cell> = {
   arpSweepDown: arp16('arpSweepDown', [7, 6, 5, 4, 3, 2, 1, 0]),
   arpSkip: arp16('arpSkip', [0, 2, 1, 3, 2, 4, 3, 1]), // broken thirds: skips every other chord tone
   arpTopPedal: arp16('arpTopPedal', [4, 0, 4, 1, 4, 2, 4, 3]), // pedal on the top note, the chord climbing under it
+  // Complex and Extreme: spread-out shapes that leap over chord tones instead of walking through them.
+  arpSpread: arp16('arpSpread', [0, 2, 4, 6, 3, 5, 1, 4]), // open voicing: every move skips a chord tone or more
+  arpPedalSpread: {
+    // Low palm-muted pedal under a spread chord line (root, 5th, 3rd above the octave …).
+    id: 'arpPedalSpread',
+    length: 8,
+    hits: [h(0, 1, 'root', true, true), a(1, 1, 2, true), h(2, 1, 'root', true), a(3, 1, 4, true),
+      h(4, 1, 'root', true, true), a(5, 1, 1, true), h(6, 1, 'root', true), a(7, 1, 5)],
+  },
+  arpPedalLeap: {
+    // Gallop-like pedal: two pedal hits, then leaps between the chord's top and bottom.
+    id: 'arpPedalLeap',
+    length: 8,
+    hits: [h(0, 1, 'root', true, true), h(1, 1, 'root', true), a(2, 1, 4, true), h(3, 1, 'root', true),
+      a(4, 1, 2, true), h(5, 1, 'root', true), a(6, 1, 5, true), a(7, 1, 3)],
+  },
   stringSkip: {
     id: 'stringSkip',
     length: 4,

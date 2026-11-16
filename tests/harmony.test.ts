@@ -279,7 +279,7 @@ describe('arpeggios', () => {
   });
 
   it('every arpeggio cell only uses chord-tone roles that fit inside it', () => {
-    for (const id of ['arpeggio', 'arpUp', 'arpDown', 'arpBroken', 'arpRoll', 'tremArp', 'tremArpBeat', 'pedalArp', 'ringArp', 'g3Arp', 'g5Arp', 'g6Arp', 'arpSweep', 'arpSweepDown', 'arpSkip', 'arpTopPedal']) {
+    for (const id of ['arpeggio', 'arpUp', 'arpDown', 'arpBroken', 'arpRoll', 'tremArp', 'tremArpBeat', 'pedalArp', 'ringArp', 'g3Arp', 'g5Arp', 'g6Arp', 'arpSweep', 'arpSweepDown', 'arpSkip', 'arpTopPedal', 'arpSpread', 'arpPedalSpread', 'arpPedalLeap']) {
       const cell = CELLS[id]!;
       expect(cell.hits.some((h) => h.role === 'arp')).toBe(true);
       for (const h of cell.hits) {
@@ -287,6 +287,51 @@ describe('arpeggios', () => {
         if (h.role === 'arp') expect(typeof h.tone).toBe('number');
       }
     }
+  });
+
+  it('the spread-out cells never walk to the next chord tone', () => {
+    for (const id of ['arpSpread', 'arpPedalSpread', 'arpPedalLeap']) {
+      const tones = CELLS[id]!.hits.filter((h) => h.role === 'arp').map((h) => h.tone as number);
+      for (let i = 1; i < tones.length; i++) expect(Math.abs(tones[i]! - tones[i - 1]!), id).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('Complex and Extreme arpeggios spread out, with a pedal on the root', () => {
+    for (const complexity of ['complex', 'extreme'] as const) {
+      let small = 0;
+      let moves = 0;
+      let pedalPatterns = 0;
+      let riffs = 0;
+      for (let seed = 1; seed <= 120; seed++) {
+        const r = generateRiff({ key: 'E', scale: 'phrygian', bpm: 180, bars: 4, seed, complexity, guitar2Mode: 'arpeggio' });
+        riffs++;
+        const g = r.guitar2;
+        for (let i = 1; i < g.length; i++) {
+          moves++;
+          if (Math.abs(g[i]!.midi - g[i - 1]!.midi) <= 4) small++;
+        }
+        // A pedal pattern: every other 16th of a chord comes back to the same root.
+        const first = r.progression[0]!;
+        const notes = g.filter((n) => n.step < first.step + first.length);
+        if (notes.length >= 8 && [0, 2, 4, 6].every((k) => notes[k]!.midi === notes[0]!.midi && pc(notes[0]!.midi) === first.rootPc)) pedalPatterns++;
+      }
+      // Before the spread-out patterns: 75 % (Complex) and 67 % (Extreme) of moves were ≤ a major 3rd.
+      expect(small / moves, complexity).toBeLessThan(complexity === 'extreme' ? 0.55 : 0.7);
+      expect(pedalPatterns, complexity).toBeGreaterThan(riffs / 10);
+    }
+  });
+
+  it("Extreme Guitar 1's pedal-and-arpeggio cells play the pedal on the root and chord tones above it", () => {
+    let seen = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const r = generateRiff({ key: 'A', scale: 'harmonicMinor', bpm: 180, bars: 4, seed, complexity: 'extreme', style: 'chug' });
+      for (const n of r.guitar1) {
+        const chord = chordAt(r.progression, n.step);
+        if (n.palmMute) expect(pc(n.midi)).toBe(chord.rootPc);
+      }
+      if (r.guitar1.some((n, i) => i > 0 && !n.palmMute && r.guitar1[i - 1]!.palmMute && n.step === r.guitar1[i - 1]!.step + 1)) seen++;
+    }
+    expect(seen).toBeGreaterThan(20);
   });
 
   it('every profile can use arpeggios', () => {
